@@ -1,0 +1,323 @@
+SHOW USER;
+
+-- Tabla COMUNA
+CREATE TABLE COMUNA (
+    id_comuna NUMBER(3) PRIMARY KEY,
+    nombre_comuna VARCHAR2(30) NOT NULL
+);
+
+-- Tabla SUCURSAL
+CREATE TABLE SUCURSAL (
+    id_sucursal NUMBER(3) PRIMARY KEY,
+    desc_sucursal VARCHAR2(30) NOT NULL,
+    direccion_sucursal VARCHAR2(30) NOT NULL,
+    id_comuna NUMBER(3),
+    CONSTRAINT fk_sucursal_comuna FOREIGN KEY (id_comuna) REFERENCES COMUNA(id_comuna)
+);
+
+-- Tabla CATEGORIA_EMPLEADO
+CREATE TABLE CATEGORIA_EMPLEADO (
+    id_categoria_emp NUMBER(1) PRIMARY KEY,
+    desc_categoria_emp VARCHAR2(30) NOT NULL
+);
+
+-- Tabla EMPLEADO
+CREATE TABLE EMPLEADO (
+    numrut_emp NUMBER(10) PRIMARY KEY,
+    dvrut_emp VARCHAR2(1) NOT NULL,
+    appaterno_emp VARCHAR2(15) NOT NULL,
+    apmaterno_emp VARCHAR2(15) NOT NULL,
+    nombre_emp VARCHAR2(25) NOT NULL,
+    foto_emp BLOB,
+    direccion_emp VARCHAR2(60) NOT NULL,
+    fonofijo_emp VARCHAR2(15) NOT NULL,
+    celular_emp VARCHAR2(15),
+    fecnac_emp DATE,
+    fecing_emp DATE NOT NULL,
+    sueldo_emp NUMBER(7) NOT NULL,
+    id_categoria_emp NUMBER(1),
+    id_sucursal NUMBER(3),
+    CONSTRAINT fk_empleado_categoria FOREIGN KEY (id_categoria_emp) REFERENCES CATEGORIA_EMPLEADO(id_categoria_emp),
+    CONSTRAINT fk_empleado_sucursal FOREIGN KEY (id_sucursal) REFERENCES SUCURSAL(id_sucursal)
+);
+
+-- Tabla HABERES
+CREATE TABLE HABERES (
+    numrut_emp NUMBER(10),
+    id_sucursal NUMBER(3),
+    mes_proceso NUMBER(2),
+    anno_proceso NUMBER(4),
+    sueldo_base NUMBER(8),
+    comision_arriendo NUMBER(8),
+    colacion NUMBER(8),
+    movilizacion NUMBER(8),
+    CONSTRAINT pk_haberes PRIMARY KEY (numrut_emp, mes_proceso, anno_proceso),
+    CONSTRAINT fk_haberes_empleados FOREIGN KEY (numrut_emp) REFERENCES EMPLEADO(numrut_emp)
+);
+
+-- Tabla TIPO_PROPIEDAD
+CREATE TABLE TIPO_PROPIEDAD (
+    id_tipo_propiedad VARCHAR2(1) PRIMARY KEY,
+    desc_tipo_propiedad VARCHAR2(30) NOT NULL
+);
+
+-- Tabla PROPIETARIO
+CREATE TABLE PROPIETARIO (
+    numrut_prop NUMBER(10) PRIMARY KEY,
+    dvrut_prop VARCHAR2(1) NOT NULL,
+    appaterno_prop VARCHAR2(15) NOT NULL,
+    apmaterno_prop VARCHAR2(15) NOT NULL,
+    nombre_prop VARCHAR2(25) NOT NULL,
+    direccion_prop VARCHAR2(60) NOT NULL,
+    fonofijo_prop VARCHAR2(15) NOT NULL,
+    celular_prop VARCHAR2(15)
+);
+
+-- Tabla PROPIEDAD
+CREATE TABLE PROPIEDAD (
+    nro_propiedad NUMBER(6) PRIMARY KEY,
+    direccion_propiedad VARCHAR2(60) NOT NULL,
+    superficie NUMBER(5,2) NOT NULL,
+    nro_dormitorios NUMBER(1),
+    nro_banos NUMBER(1),
+    valor_arriendo NUMBER(7) NOT NULL,
+    valor_gasto_comun NUMBER(6),
+    id_tipo_propiedad VARCHAR2(1),
+    id_comuna NUMBER(3),
+    numrut_prop NUMBER(10),
+    numrut_emp NUMBER(10),
+    CONSTRAINT fk_propiedad_comuna FOREIGN KEY (id_comuna) REFERENCES COMUNA(id_comuna),
+    CONSTRAINT fk_propiedad_empleado FOREIGN KEY (numrut_emp) REFERENCES EMPLEADO(numrut_emp),
+    CONSTRAINT fk_propiedad_propietario FOREIGN KEY (numrut_prop) REFERENCES PROPIETARIO(numrut_prop),
+    CONSTRAINT fk_propiedad_tipo_propiedad FOREIGN KEY (id_tipo_propiedad) REFERENCES TIPO_PROPIEDAD(id_tipo_propiedad)
+);
+
+-- Tabla CLIENTE
+CREATE TABLE CLIENTE (
+    numrut_cli NUMBER(10) PRIMARY KEY,
+    dvrut_cli VARCHAR2(1) NOT NULL,
+    appaterno_cli VARCHAR2(15) NOT NULL,
+    apmaterno_cli VARCHAR2(15) NOT NULL,
+    nombre_cli VARCHAR2(25) NOT NULL,
+    direccion_cli VARCHAR2(60) NOT NULL,
+    fonofijo_cli NUMBER(15) NOT NULL,
+    celular_cli NUMBER(15),
+    renta_cli NUMBER(7) NOT NULL
+);
+
+-- Tabla ARRIENDO_PROPIEDAD
+CREATE TABLE ARRIENDO_PROPIEDAD (
+    nro_propiedad NUMBER(6),
+    numrut_cli NUMBER(10),
+    fecini_arriendo DATE NOT NULL,
+    fecter_arriendo DATE,
+    CONSTRAINT pk_arriendo_propiedad PRIMARY KEY (nro_propiedad, numrut_cli),
+    CONSTRAINT fk_arriendo_prop_cliente FOREIGN KEY (numrut_cli) REFERENCES CLIENTE(numrut_cli),
+    CONSTRAINT fk_arriendo_prop_propiedad FOREIGN KEY (nro_propiedad) REFERENCES PROPIEDAD(nro_propiedad)
+);
+
+-- Tabla DETALLE_PROP_ARRENDADAS
+CREATE TABLE DETALLE_PROP_ARRENDADAS (
+    correl_det_prop NUMBER(4) PRIMARY KEY,
+    desc_tipo_propiedad VARCHAR2(30) NOT NULL,
+    nro_propiedad NUMBER(6),
+    direccion_propiedad VARCHAR2(60) NOT NULL,
+    valor_arriendo NUMBER(7) NOT NULL,
+    fec_inicio_arriendo DATE NOT NULL,
+    fec_termino_arriendo DATE,
+    fecha_proceso DATE NOT NULL,
+    CONSTRAINT fk_detalle_prop_arrendadas FOREIGN KEY (nro_propiedad) REFERENCES PROPIEDAD(nro_propiedad)
+);
+
+-- Tabla RESUMEN_PAGOS_POR_SUCURSAL
+CREATE TABLE RESUMEN_PAGOS_POR_SUCURSAL (
+    id_sucursal NUMBER(3),
+    mes_proceso NUMBER(2),
+    anno_proceso NUMBER(4),
+    total_empleados NUMBER(3),
+    total_haberes NUMBER(10),
+    total_descuentos NUMBER(10),
+    CONSTRAINT pk_resumen_pagos_por_suc PRIMARY KEY (id_sucursal, mes_proceso, anno_proceso),
+    CONSTRAINT fk_res_pagos_sucursal_sucursal FOREIGN KEY (id_sucursal) REFERENCES SUCURSAL(id_sucursal)
+);
+
+-- Tabla DESCUENTOS
+CREATE TABLE DESCUENTOS (
+    numrut_emp NUMBER(10),
+    id_sucursal NUMBER(3),
+    mes_proceso NUMBER(2),
+    anno_proceso NUMBER(4),
+    prevision NUMBER(8),
+    salud NUMBER(8),
+    CONSTRAINT pk_descuentos PRIMARY KEY (numrut_emp, mes_proceso, anno_proceso),
+    CONSTRAINT fk_descuentos_empleados FOREIGN KEY (numrut_emp) REFERENCES EMPLEADO(numrut_emp)
+);
+
+
+-- Insertar comunas
+INSERT INTO COMUNA VALUES (1, 'Las Condes');
+INSERT INTO COMUNA VALUES (2, 'Santiago');
+INSERT INTO COMUNA VALUES (3, 'Providencia');
+INSERT INTO COMUNA VALUES (4, 'Vitacura');
+
+-- Insertar sucursales
+INSERT INTO SUCURSAL VALUES (10, 'Sucursal Las Condes', 'Av. Apoquindo 4500', 1);
+INSERT INTO SUCURSAL VALUES (20, 'Sucursal Santiago Centro', 'Huérfanos 1234', 2);
+INSERT INTO SUCURSAL VALUES (30, 'Sucursal Providencia', 'Av. Providencia 2000', 3);
+INSERT INTO SUCURSAL VALUES (40, 'Sucursal Vitacura', 'Av. Vitacura 5000', 4);
+
+-- Insertar categorías de empleado
+INSERT INTO CATEGORIA_EMPLEADO VALUES (1, 'Gerente');
+INSERT INTO CATEGORIA_EMPLEADO VALUES (2, 'Supervisor');
+INSERT INTO CATEGORIA_EMPLEADO VALUES (3, 'Ejecutivo de Arriendo');
+INSERT INTO CATEGORIA_EMPLEADO VALUES (4, 'Auxiliar');
+
+-- Insertar empleados
+INSERT INTO EMPLEADO VALUES (12345678, '9', 'Gonzalez', 'Perez', 'Juan', NULL, 'Av. Siempre Viva 123', '22222222', '911111111', TO_DATE('1980-05-15', 'YYYY-MM-DD'), TO_DATE('2020-01-15', 'YYYY-MM-DD'), 1500000, 1, 10);
+INSERT INTO EMPLEADO VALUES (23456789, '8', 'Martinez', 'Lopez', 'Maria', NULL, 'Calle Falsa 123', '23333333', '922222222', TO_DATE('1985-08-20', 'YYYY-MM-DD'), TO_DATE('2021-03-10', 'YYYY-MM-DD'), 1200000, 2, 10);
+INSERT INTO EMPLEADO VALUES (34567890, '7', 'Rodriguez', 'Silva', 'Carlos', NULL, 'Los Aromos 456', '24444444', '933333333', TO_DATE('1990-02-10', 'YYYY-MM-DD'), TO_DATE('2022-06-01', 'YYYY-MM-DD'), 800000, 3, 20);
+INSERT INTO EMPLEADO VALUES (45678901, '6', 'Fernandez', 'Garcia', 'Ana', NULL, 'Las Flores 789', '25555555', '944444444', TO_DATE('1992-11-30', 'YYYY-MM-DD'), TO_DATE('2023-02-15', 'YYYY-MM-DD'), 600000, 4, 30);
+
+-- Insertar tipos de propiedad
+INSERT INTO TIPO_PROPIEDAD VALUES ('A', 'CASA');
+INSERT INTO TIPO_PROPIEDAD VALUES ('B', 'DEPARTAMENTO');
+INSERT INTO TIPO_PROPIEDAD VALUES ('C', 'LOCAL');
+INSERT INTO TIPO_PROPIEDAD VALUES ('D', 'PARCELA SIN CASA');
+INSERT INTO TIPO_PROPIEDAD VALUES ('E', 'PARCELA CON CASA');
+
+-- Insertar propietarios
+INSERT INTO PROPIETARIO VALUES (11111111, '1', 'Lopez', 'Diaz', 'Pedro', 'Av. Principal 100', '26666666', '955555555');
+INSERT INTO PROPIETARIO VALUES (22222222, '2', 'Garcia', 'Mendez', 'Laura', 'Calle Secundaria 200', '27777777', '966666666');
+
+-- Insertar propiedades
+INSERT INTO PROPIEDAD VALUES (100001, 'Av. Las Condes 1000', 120.50, 3, 2, 850000, 50000, 'A', 1, 11111111, 12345678);
+INSERT INTO PROPIEDAD VALUES (100002, 'Av. Providencia 2000', 75.25, 2, 1, 550000, 35000, 'B', 3, 22222222, 23456789);
+INSERT INTO PROPIEDAD VALUES (100003, 'Av. Vitacura 3000', 200.00, 4, 3, 1200000, 80000, 'A', 4, 11111111, 12345678);
+INSERT INTO PROPIEDAD VALUES (100004, 'Huérfanos 1500', 45.75, 1, 1, 350000, 25000, 'B', 2, 22222222, 34567890);
+INSERT INTO PROPIEDAD VALUES (100005, 'Av. Apoquindo 2500', 90.00, 3, 2, 650000, 40000, 'B', 1, 11111111, 23456789);
+
+-- Insertar clientes
+INSERT INTO CLIENTE VALUES (33333333, '3', 'Perez', 'Gomez', 'Roberto', 'Los Placeres 300', 28888888, 977777777, 750000);
+INSERT INTO CLIENTE VALUES (44444444, '4', 'Sanchez', 'Vargas', 'Claudia', 'Los Olivos 400', 29999999, 988888888, 450000);
+INSERT INTO CLIENTE VALUES (55555555, '5', 'Torres', 'Rios', 'Miguel', 'Los Alerces 500', 30000000, 999999999, 300000);
+INSERT INTO CLIENTE VALUES (66666666, '6', 'Mendoza', 'Castro', 'Elena', 'Los Cerezos 600', 31111111, 900000000, 180000);
+INSERT INTO CLIENTE VALUES (77777777, '7', 'Castro', 'Nuñez', 'Diego', 'Los Tilos 700', 32222222, 911111112, 600000);
+
+-- Insertar arriendos
+INSERT INTO ARRIENDO_PROPIEDAD VALUES (100001, 33333333, TO_DATE('2024-01-01', 'YYYY-MM-DD'), TO_DATE('2024-12-31', 'YYYY-MM-DD'));
+INSERT INTO ARRIENDO_PROPIEDAD VALUES (100002, 44444444, TO_DATE('2024-02-01', 'YYYY-MM-DD'), TO_DATE('2024-11-30', 'YYYY-MM-DD'));
+INSERT INTO ARRIENDO_PROPIEDAD VALUES (100003, 55555555, TO_DATE('2024-03-01', 'YYYY-MM-DD'), TO_DATE('2024-10-31', 'YYYY-MM-DD'));
+
+-- Insertar haberes
+INSERT INTO HABERES VALUES (12345678, 10, 1, 2024, 1500000, 100000, 50000, 30000);
+INSERT INTO HABERES VALUES (23456789, 10, 1, 2024, 1200000, 80000, 50000, 25000);
+INSERT INTO HABERES VALUES (34567890, 20, 1, 2024, 800000, 60000, 40000, 20000);
+
+-- Insertar descuentos
+INSERT INTO DESCUENTOS VALUES (12345678, 10, 1, 2024, 150000, 75000);
+INSERT INTO DESCUENTOS VALUES (23456789, 10, 1, 2024, 120000, 60000);
+INSERT INTO DESCUENTOS VALUES (34567890, 20, 1, 2024, 80000, 40000);
+
+
+COMMIT;
+
+
+SELECT 'COMUNA' AS tabla, COUNT(*) AS cantidad FROM COMUNA
+UNION ALL
+SELECT 'SUCURSAL', COUNT(*) FROM SUCURSAL
+UNION ALL
+SELECT 'CATEGORIA_EMPLEADO', COUNT(*) FROM CATEGORIA_EMPLEADO
+UNION ALL
+SELECT 'EMPLEADO', COUNT(*) FROM EMPLEADO
+UNION ALL
+SELECT 'CLIENTE', COUNT(*) FROM CLIENTE
+UNION ALL
+SELECT 'PROPIEDAD', COUNT(*) FROM PROPIEDAD
+UNION ALL
+SELECT 'TIPO_PROPIEDAD', COUNT(*) FROM TIPO_PROPIEDAD;
+
+
+SELECT * FROM CLIENTE;
+SELECT * FROM EMPLEADO;
+SELECT * FROM PROPIEDAD;
+
+
+
+
+--Caso 1 
+
+SELECT 
+    numrut_cli || '-' || dvrut_cli AS "RUT CLIENTE",
+    appaterno_cli || ' ' || apmaterno_cli || ' ' || nombre_cli AS "NOMBRE COMPLETO",
+    fonofijo_cli AS "TELEFONO FIJO",
+    celular_cli AS "CELULAR",
+    TO_CHAR(renta_cli, 'L999G999') AS "RENTA",
+    CASE 
+        WHEN renta_cli > 500000 THEN 'TRAMO 1'
+        WHEN renta_cli BETWEEN 400000 AND 500000 THEN 'TRAMO 2'
+        WHEN renta_cli BETWEEN 200000 AND 399999 THEN 'TRAMO 3'
+        ELSE 'TRAMO 4'
+    END AS "TRAMO RENTA"
+FROM CLIENTE
+WHERE renta_cli BETWEEN &RENTA_MINIMA AND &RENTA_MAXIMA
+    AND celular_cli IS NOT NULL
+ORDER BY "NOMBRE COMPLETO" ASC;
+
+
+
+--Caso 2
+
+SELECT 
+    CASE e.id_categoria_emp
+        WHEN 1 THEN 'Gerente'
+        WHEN 2 THEN 'Supervisor'
+        WHEN 3 THEN 'Ejecutivo de Arriendo'
+        WHEN 4 THEN 'Auxiliar'
+    END AS "CATEGORIA EMPLEADO",
+    CASE s.id_sucursal
+        WHEN 10 THEN 'Sucursal Las Condes'
+        WHEN 20 THEN 'Sucursal Santiago Centro'
+        WHEN 30 THEN 'Sucursal Providencia'
+        WHEN 40 THEN 'Sucursal Vitacura'
+    END AS "SUCURSAL",
+    COUNT(*) AS "CANTIDAD EMPLEADOS",
+    TO_CHAR(AVG(e.sueldo_emp), 'L999G999') AS "SUELDO PROMEDIO"
+FROM EMPLEADO e
+JOIN SUCURSAL s ON e.id_sucursal = s.id_sucursal
+GROUP BY e.id_categoria_emp, s.id_sucursal
+HAVING AVG(e.sueldo_emp) >= &SUELDO_PROMEDIO_MINIMO
+ORDER BY AVG(e.sueldo_emp) DESC;
+
+
+
+--Caso 3
+
+SELECT 
+    CASE p.id_tipo_propiedad
+        WHEN 'A' THEN 'CASA'
+        WHEN 'B' THEN 'DEPARTAMENTO'
+        WHEN 'C' THEN 'LOCAL'
+        WHEN 'D' THEN 'PARCELA SIN CASA'
+        WHEN 'E' THEN 'PARCELA CON CASA'
+    END AS "TIPO PROPIEDAD",
+    COUNT(*) AS "TOTAL PROPIEDADES",
+    TO_CHAR(AVG(p.valor_arriendo), 'L999G999') AS "ARRIENDO PROMEDIO",
+    TO_CHAR(AVG(p.superficie), '999.99') AS "SUPERFICIE PROMEDIO",
+    TO_CHAR(AVG(p.valor_arriendo / p.superficie), '999G999.99') AS "VALOR ARRIENDO M2",
+    CASE 
+        WHEN AVG(p.valor_arriendo / p.superficie) < 5000 THEN 'Económico'
+        WHEN AVG(p.valor_arriendo / p.superficie) BETWEEN 5000 AND 10000 THEN 'Medio'
+        ELSE 'Alto'
+    END AS "CLASIFICACION"
+FROM PROPIEDAD p
+GROUP BY p.id_tipo_propiedad
+HAVING AVG(p.valor_arriendo / p.superficie) > 1000
+ORDER BY AVG(p.valor_arriendo / p.superficie) DESC;
+
+
+
+
+
+
+
+
