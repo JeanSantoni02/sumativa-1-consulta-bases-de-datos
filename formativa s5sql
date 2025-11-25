@@ -1,0 +1,271 @@
+
+
+-- Tabla REGION
+CREATE TABLE REGION (
+    cod_region NUMBER(3) PRIMARY KEY,
+    nombre_region VARCHAR2(50) NOT NULL
+);
+
+-- Tabla PROVINCIA
+CREATE TABLE PROVINCIA (
+    cod_region NUMBER(3),
+    cod_provincia NUMBER(3),
+    nombre_provincia VARCHAR2(50) NOT NULL,
+    CONSTRAINT pk_provincia PRIMARY KEY (cod_region, cod_provincia),
+    CONSTRAINT fk_provincia_region FOREIGN KEY (cod_region) REFERENCES REGION(cod_region)
+);
+
+-- Tabla COMUNA
+CREATE TABLE COMUNA (
+    cod_region NUMBER(3),
+    cod_provincia NUMBER(3),
+    cod_comuna NUMBER(3),
+    nombre_comuna VARCHAR2(50) NOT NULL,
+    CONSTRAINT pk_comuna PRIMARY KEY (cod_region, cod_provincia, cod_comuna),
+    CONSTRAINT fk_comuna_provincia FOREIGN KEY (cod_region, cod_provincia) REFERENCES PROVINCIA(cod_region, cod_provincia)
+);
+
+-- Tabla TIPO_CLIENTE
+CREATE TABLE TIPO_CLIENTE (
+    cod_tipo_cliente NUMBER(3) PRIMARY KEY,
+    nombre_tipo_cliente VARCHAR2(30) NOT NULL,
+    promedio_renta VARCHAR2(40) NOT NULL
+);
+
+-- Tabla PROFESION_OFICIO
+CREATE TABLE PROFESION_OFICIO (
+    cod_prof_ofic NUMBER(3) PRIMARY KEY,
+    nombre_prof_ofic VARCHAR2(50) NOT NULL
+);
+
+-- Tabla PRODUCTO
+CREATE TABLE PRODUCTO (
+    cod_producto NUMBER(3) PRIMARY KEY,
+    nombre_producto VARCHAR2(50) NOT NULL,
+    desc_producto VARCHAR2(400),
+    tasaint_producto NUMBER(4,2),
+    nro_maximo_cuotas_prod NUMBER(3)
+);
+
+-- Tabla CLIENTE
+CREATE TABLE CLIENTE (
+    numrun NUMBER(10) PRIMARY KEY,
+    dvrun VARCHAR2(1) NOT NULL,
+    pnombre VARCHAR2(50) NOT NULL,
+    snombre VARCHAR2(50),
+    appaterno VARCHAR2(50) NOT NULL,
+    apmaterno VARCHAR2(50),
+    fecha_nacimiento DATE NOT NULL,
+    fecha_inscripcion DATE NOT NULL,
+    correo VARCHAR2(20),
+    fono_contacto NUMBER(10),
+    direccion VARCHAR2(50) NOT NULL,
+    cod_region NUMBER(3),
+    cod_provincia NUMBER(3),
+    cod_comuna NUMBER(3),
+    cod_prof_ofic NUMBER(3),
+    cod_tipo_cliente NUMBER(3),
+    CONSTRAINT fk_cliente_comuna FOREIGN KEY (cod_region, cod_provincia, cod_comuna) REFERENCES COMUNA(cod_region, cod_provincia, cod_comuna),
+    CONSTRAINT fk_cliente_profesion FOREIGN KEY (cod_prof_ofic) REFERENCES PROFESION_OFICIO(cod_prof_ofic),
+    CONSTRAINT fk_cliente_tipo_cliente FOREIGN KEY (cod_tipo_cliente) REFERENCES TIPO_CLIENTE(cod_tipo_cliente)
+);
+
+-- Tabla TARJETA_CLIENTE
+CREATE TABLE TARJETA_CLIENTE (
+    nro_tarjeta NUMBER(30) PRIMARY KEY,
+    numrun NUMBER(10) NOT NULL,
+    fecha_solic_tarjeta DATE NOT NULL,
+    dia_pago_mensual NUMBER(2) NOT NULL,
+    cupo_compra NUMBER(10) NOT NULL,
+    cupo_super_avance NUMBER(10) NOT NULL,
+    cupo_disp_compra NUMBER(10) NOT NULL,
+    cupo_disp_sp_avance NUMBER(10) NOT NULL,
+    CONSTRAINT fk_tarjeta_cliente FOREIGN KEY (numrun) REFERENCES CLIENTE(numrun)
+);
+
+-- Tabla TIPO_TRANSACCION_TARJETA
+CREATE TABLE TIPO_TRANSACCION_TARJETA (
+    cod_tptran_tarjeta NUMBER(4) PRIMARY KEY,
+    nombre_tptran_tarjeta VARCHAR2(50) NOT NULL,
+    tasaint_tptran_tarjeta NUMBER(4,2),
+    nro_maximo_cuotas_tran NUMBER(3),
+    cod_producto NUMBER(3),
+    CONSTRAINT fk_tipo_transaccion_producto FOREIGN KEY (cod_producto) REFERENCES PRODUCTO(cod_producto)
+);
+
+-- Tabla SUCURSAL_RETAIL
+CREATE TABLE SUCURSAL_RETAIL (
+    id_sucursal NUMBER(6) PRIMARY KEY,
+    direccion VARCHAR2(40) NOT NULL,
+    telefono NUMBER(15) NOT NULL,
+    cod_region NUMBER(3),
+    cod_provincia NUMBER(3),
+    cod_comuna NUMBER(3),
+    CONSTRAINT fk_sucursal_comuna FOREIGN KEY (cod_region, cod_provincia, cod_comuna) REFERENCES COMUNA(cod_region, cod_provincia, cod_comuna)
+);
+
+-- Tabla TRANSACCION_TARJETA_CLIENTE
+CREATE TABLE TRANSACCION_TARJETA_CLIENTE (
+    nro_tarjeta NUMBER(30),
+    nro_transaccion NUMBER(10),
+    fecha_transaccion DATE NOT NULL,
+    monto_transaccion NUMBER(10) NOT NULL,
+    total_cuotas_transaccion NUMBER(2) NOT NULL,
+    monto_total_transaccion NUMBER(10) NOT NULL,
+    cod_tptran_tarjeta NUMBER(4),
+    id_sucursal NUMBER(6),
+    CONSTRAINT pk_transaccion_tarjeta PRIMARY KEY (nro_tarjeta, nro_transaccion),
+    CONSTRAINT fk_transaccion_tarjeta FOREIGN KEY (nro_tarjeta) REFERENCES TARJETA_CLIENTE(nro_tarjeta),
+    CONSTRAINT fk_transaccion_tipo FOREIGN KEY (cod_tptran_tarjeta) REFERENCES TIPO_TRANSACCION_TARJETA(cod_tptran_tarjeta),
+    CONSTRAINT fk_transaccion_sucursal FOREIGN KEY (id_sucursal) REFERENCES SUCURSAL_RETAIL(id_sucursal)
+);
+
+-- Tabla CUOTA_TRANSAC_TARJETA_CLIENTE
+CREATE TABLE CUOTA_TRANSAC_TARJETA_CLIENTE (
+    nro_tarjeta NUMBER(30),
+    nro_transaccion NUMBER(10),
+    nro_cuota NUMBER(2),
+    fecha_venc_cuota DATE NOT NULL,
+    valor_cuota NUMBER(10) NOT NULL,
+    fecha_pago DATE,
+    monto_pagado NUMBER(10),
+    CONSTRAINT pk_cuota_transaccion PRIMARY KEY (nro_tarjeta, nro_transaccion, nro_cuota),
+    CONSTRAINT fk_cuota_transaccion FOREIGN KEY (nro_tarjeta, nro_transaccion) REFERENCES TRANSACCION_TARJETA_CLIENTE(nro_tarjeta, nro_transaccion)
+);
+
+
+-- Insertar regiones
+INSERT INTO REGION VALUES (1, 'Región Metropolitana');
+INSERT INTO REGION VALUES (2, 'Región de Valparaíso');
+INSERT INTO REGION VALUES (3, 'Región del Biobío');
+
+-- Insertar provincias
+INSERT INTO PROVINCIA VALUES (1, 1, 'Santiago');
+INSERT INTO PROVINCIA VALUES (1, 2, 'Cordillera');
+INSERT INTO PROVINCIA VALUES (2, 1, 'Valparaíso');
+INSERT INTO PROVINCIA VALUES (3, 1, 'Concepción');
+
+-- Insertar comunas
+INSERT INTO COMUNA VALUES (1, 1, 1, 'Santiago');
+INSERT INTO COMUNA VALUES (1, 1, 2, 'Providencia');
+INSERT INTO COMUNA VALUES (1, 1, 3, 'Las Condes');
+INSERT INTO COMUNA VALUES (1, 2, 1, 'Puente Alto');
+INSERT INTO COMUNA VALUES (2, 1, 1, 'Valparaíso');
+INSERT INTO COMUNA VALUES (3, 1, 1, 'Concepción');
+
+-- Insertar tipos de cliente
+INSERT INTO TIPO_CLIENTE VALUES (1, 'TRABAJADORES DEPENDIENTES', '$800.000 - $1.500.000');
+INSERT INTO TIPO_CLIENTE VALUES (2, 'TRABAJADORES INDEPENDIENTES', '$500.000 - $1.200.000');
+INSERT INTO TIPO_CLIENTE VALUES (3, 'PENSIONADOS', '$300.000 - $600.000');
+
+-- Insertar profesiones/oficios
+INSERT INTO PROFESION_OFICIO VALUES (1, 'CONTADOR');
+INSERT INTO PROFESION_OFICIO VALUES (2, 'VENDEDOR');
+INSERT INTO PROFESION_OFICIO VALUES (3, 'INGENIERO');
+INSERT INTO PROFESION_OFICIO VALUES (4, 'ADMINISTRADOR');
+INSERT INTO PROFESION_OFICIO VALUES (5, 'DOCENTE');
+
+-- Insertar productos
+INSERT INTO PRODUCTO VALUES (1, 'TARJETA CLÁSICA', 'Tarjeta de crédito para ingresos básicos', 1.5, 24);
+INSERT INTO PRODUCTO VALUES (2, 'TARJETA ORO', 'Tarjeta premium con beneficios exclusivos', 1.2, 36);
+INSERT INTO PRODUCTO VALUES (3, 'TARJETA PLATINUM', 'Tarjeta de alto nivel para clientes exclusivos', 1.0, 48);
+
+-- Insertar clientes (con años de inscripción variados para el Caso 1)
+INSERT INTO CLIENTE VALUES (21281336, '4', 'Pamela', NULL, 'Gatica', 'Lopez', TO_DATE('1994-05-15', 'YYYY-MM-DD'), TO_DATE('2019-09-19', 'YYYY-MM-DD'), 'p.gatica@mail.com', 912345678, 'Calle Luis Pasteur 567', 1, 1, 2, 1, 2);
+INSERT INTO CLIENTE VALUES (20393064, 'K', 'Sebastian', NULL, 'Moreno', 'Gonzalez', TO_DATE('1990-03-10', 'YYYY-MM-DD'), TO_DATE('2020-10-23', 'YYYY-MM-DD'), 's.moreno@mail.com', 987654321, 'Avda. Presidente Riesco 1245', 1, 1, 3, 2, 1);
+INSERT INTO CLIENTE VALUES (18181488, '8', 'Leonardo', NULL, 'Duarte', 'Silva', TO_DATE('1989-08-20', 'YYYY-MM-DD'), TO_DATE('2018-01-04', 'YYYY-MM-DD'), 'l.duarte@mail.com', 956789123, 'Miguel de Cervantes 89', 1, 1, 1, 1, 1);
+INSERT INTO CLIENTE VALUES (14439731, '4', 'Luis', NULL, 'Perez', 'Martinez', TO_DATE('1978-12-05', 'YYYY-MM-DD'), TO_DATE('2017-02-28', 'YYYY-MM-DD'), 'l.perez@mail.com', 945612378, 'Cienfuegos 176', 1, 1, 2, 2, 2);
+INSERT INTO CLIENTE VALUES (19471401, '1', 'Pamela', NULL, 'Mandiola', 'Rojas', TO_DATE('1985-07-12', 'YYYY-MM-DD'), TO_DATE('2021-10-03', 'YYYY-MM-DD'), 'p.mandiola@mail.com', 978945612, 'Avda. Vitacura 34', 1, 1, 3, 1, 1);
+INSERT INTO CLIENTE VALUES (20348481, '8', 'Sebastian', NULL, 'Retamal', 'Fuentes', TO_DATE('1988-11-25', 'YYYY-MM-DD'), TO_DATE('2019-01-06', 'YYYY-MM-DD'), 's.retamal@mail.com', 934567890, 'Javiera Carrera Depto 34 Edificio Norte', 1, 1, 1, 2, 1);
+
+-- Insertar tarjetas de clientes
+INSERT INTO TARJETA_CLIENTE VALUES (1234567890123456, 21281336, TO_DATE('2020-01-15', 'YYYY-MM-DD'), 15, 1000000, 500000, 669000, 450000);
+INSERT INTO TARJETA_CLIENTE VALUES (2345678901234567, 20393064, TO_DATE('2021-03-20', 'YYYY-MM-DD'), 20, 2000000, 800000, 1418500, 750000);
+INSERT INTO TARJETA_CLIENTE VALUES (3456789012345678, 18181488, TO_DATE('2019-05-10', 'YYYY-MM-DD'), 10, 1500000, 600000, 970000, 550000);
+INSERT INTO TARJETA_CLIENTE VALUES (4567890123456789, 14439731, TO_DATE('2018-08-25', 'YYYY-MM-DD'), 5, 800000, 300000, 633300, 280000);
+INSERT INTO TARJETA_CLIENTE VALUES (5678901234567890, 19471401, TO_DATE('2022-02-14', 'YYYY-MM-DD'), 25, 1200000, 500000, 850000, 480000);
+INSERT INTO TARJETA_CLIENTE VALUES (6789012345678901, 20348481, TO_DATE('2020-11-30', 'YYYY-MM-DD'), 18, 1800000, 700000, 1200000, 650000);
+
+-- Insertar tipos de transacción
+INSERT INTO TIPO_TRANSACCION_TARJETA VALUES (1, 'COMPRA COMERCIO', 1.5, 24, 1);
+INSERT INTO TIPO_TRANSACCION_TARJETA VALUES (2, 'AVANCE EN EFECTIVO', 2.0, 12, 1);
+INSERT INTO TIPO_TRANSACCION_TARJETA VALUES (3, 'COMPRA ONLINE', 1.5, 24, 2);
+
+-- Insertar sucursales retail
+INSERT INTO SUCURSAL_RETAIL VALUES (100001, 'Av. Providencia 1234', 222222222, 1, 1, 2);
+INSERT INTO SUCURSAL_RETAIL VALUES (100002, 'Av. Apoquindo 5678', 233333333, 1, 1, 3);
+INSERT INTO SUCURSAL_RETAIL VALUES (100003, 'Pajaritos 2500', 244444444, 1, 1, 1);
+
+-- Insertar transacciones (algunas del año anterior para el Caso 2)
+INSERT INTO TRANSACCION_TARJETA_CLIENTE VALUES (1234567890123456, 1, TO_DATE('2023-05-15', 'YYYY-MM-DD'), 150000, 6, 159000, 1, 100001);
+INSERT INTO TRANSACCION_TARJETA_CLIENTE VALUES (2345678901234567, 1, TO_DATE('2023-08-20', 'YYYY-MM-DD'), 250000, 12, 280000, 1, 100002);
+INSERT INTO TRANSACCION_TARJETA_CLIENTE VALUES (3456789012345678, 1, TO_DATE('2024-01-10', 'YYYY-MM-DD'), 180000, 6, 190800, 1, 100001);
+INSERT INTO TRANSACCION_TARJETA_CLIENTE VALUES (4567890123456789, 1, TO_DATE('2023-11-05', 'YYYY-MM-DD'), 80000, 3, 82400, 1, 100003);
+
+
+COMMIT;
+
+-- =============================================
+-- CONSULTAS 
+-- =============================================
+
+-- CASO 1: Listado de Clientes
+SELECT 
+    c.numrun || '-' || c.dvrun AS "RUT Cliente",
+    c.pnombre || ' ' || c.appaterno AS "Nombre Cliente",
+    po.nombre_prof_ofic AS "Profesión Cliente",
+    TO_CHAR(c.fecha_inscripcion, 'DD-MM-YYYY') AS "Fecha de Inscripción",
+    c.direccion AS "Dirección Cliente"
+FROM CLIENTE c
+JOIN PROFESION_OFICIO po ON c.cod_prof_ofic = po.cod_prof_ofic
+JOIN TIPO_CLIENTE tc ON c.cod_tipo_cliente = tc.cod_tipo_cliente
+WHERE tc.nombre_tipo_cliente = 'TRABAJADORES DEPENDIENTES'
+    AND po.nombre_prof_ofic IN ('CONTADOR', 'VENDEDOR')
+    AND EXTRACT(YEAR FROM c.fecha_inscripcion) > (
+        SELECT ROUND(AVG(EXTRACT(YEAR FROM fecha_inscripcion)))
+        FROM CLIENTE
+    )
+ORDER BY c.numrun ASC;
+
+-- CASO 2: Aumento de crédito
+
+CREATE TABLE CLIENTES_CUPOS_COMPRA AS
+SELECT 
+    c.numrun || '-' || c.dvrun AS RUT_CLIENTE,
+    EXTRACT(YEAR FROM SYSDATE) - EXTRACT(YEAR FROM c.fecha_nacimiento) AS EDAD,
+    TO_CHAR(tc.cupo_disp_compra, 'L999G999') AS CUPO_DISPONIBLE_COMPRA,
+    tc.nro_tarjeta
+FROM CLIENTE c
+JOIN TARJETA_CLIENTE tc ON c.numrun = tc.numrun
+WHERE tc.cupo_disp_compra >= (
+    SELECT MAX(tc2.cupo_disp_compra)
+    FROM TARJETA_CLIENTE tc2
+    JOIN CLIENTE c2 ON tc2.numrun = c2.numrun
+    WHERE EXTRACT(YEAR FROM tc2.fecha_solic_tarjeta) = EXTRACT(YEAR FROM SYSDATE) - 1
+);
+
+SELECT 
+    RUT_CLIENTE,
+    EDAD,
+    CUPO_DISPONIBLE_COMPRA,
+    CASE 
+        WHEN EDAD BETWEEN 20 AND 35 THEN 'TRABAJADORES JÓVENES'
+        WHEN EDAD BETWEEN 36 AND 50 THEN 'TRABAJADORES ADULTOS'
+        ELSE 'TRABAJADORES SENIOR'
+    END AS TIPO_CLIENTE
+FROM CLIENTES_CUPOS_COMPRA
+ORDER BY EDAD ASC;
+
+-- Verificar conteo de registros
+SELECT 'CLIENTE' AS tabla, COUNT(*) AS cantidad FROM CLIENTE
+UNION ALL
+SELECT 'TARJETA_CLIENTE', COUNT(*) FROM TARJETA_CLIENTE
+UNION ALL
+SELECT 'PROFESION_OFICIO', COUNT(*) FROM PROFESION_OFICIO
+UNION ALL
+SELECT 'TIPO_CLIENTE', COUNT(*) FROM TIPO_CLIENTE;
+
+-- Mostrar algunos datos de ejemplo
+SELECT * FROM CLIENTE;
+SELECT * FROM TARJETA_CLIENTE;
+SELECT * FROM CLIENTES_CUPOS_COMPRA;
