@@ -1,0 +1,414 @@
+
+-- Tabla COMUNA
+CREATE TABLE COMUNA (
+    cod_comuna NUMBER(5) PRIMARY KEY,
+    nom_comuna VARCHAR2(20 BYTE) NOT NULL,
+    correl_comuna NUMBER(4)
+);
+
+-- Tabla ESTADO_VAL
+CREATE TABLE ESTADO_VAL (
+    cod_estoval NUMBER(1) PRIMARY KEY,
+    desc_estoval VARCHAR2(25 BYTE) NOT NULL
+);
+
+-- Tabla RUBRO
+CREATE TABLE RUBRO (
+    cod_rubro NUMBER(1) PRIMARY KEY,
+    nombre_rubro VARCHAR2(20 BYTE) NOT NULL
+);
+
+-- Tabla PROFESION
+CREATE TABLE PROFESION (
+    cod_profesion NUMBER(6) PRIMARY KEY,
+    nombre_profesion VARCHAR2(25 BYTE) NOT NULL
+);
+
+-- Tabla SECTOR
+CREATE TABLE SECTOR (
+    cod_sector NUMBER(5) PRIMARY KEY,
+    nombre_sector VARCHAR2(20 BYTE) NOT NULL
+);
+
+-- Tabla AFP
+CREATE TABLE AFP (
+    cod_afp NUMBER(1) PRIMARY KEY,
+    nombre_afp VARCHAR2(20 BYTE) NOT NULL
+);
+
+-- Tabla TIPO_CONTRATO
+CREATE TABLE TIPO_CONTRATO (
+    cod_tpcontrato NUMBER(1) PRIMARY KEY,
+    nombre_tpcontrato VARCHAR2(20 BYTE) NOT NULL,
+    valor_fijo NUMBER(5) NOT NULL
+);
+
+-- Tabla EMPRESA
+CREATE TABLE EMPRESA (
+    cod_empresa NUMBER(5) PRIMARY KEY,
+    cod_comuna NUMBER(5),
+    cod_sector NUMBER(5),
+    nombre_empresa VARCHAR2(40 BYTE) NOT NULL,
+    CONSTRAINT fk_empresa_comuna FOREIGN KEY (cod_comuna) REFERENCES COMUNA(cod_comuna),
+    CONSTRAINT fk_empresa_sector FOREIGN KEY (cod_sector) REFERENCES SECTOR(cod_sector)
+);
+
+-- Tabla PROFESIONAL
+CREATE TABLE PROFESIONAL (
+    id_profesional NUMBER(10) PRIMARY KEY,
+    numrun_prof NUMBER(10) NOT NULL,
+    dvrun_prof VARCHAR2(1) NOT NULL,
+    cod_comuna NUMBER(4),
+    cod_profesion NUMBER(6),
+    appaterno VARCHAR2(25 BYTE) NOT NULL,
+    apmaterno VARCHAR2(20 BYTE),
+    nombre VARCHAR2(20 BYTE) NOT NULL,
+    cod_estoval NUMBER(1),
+    direccion VARCHAR2(40 BYTE),
+    sueldo NUMBER(7) NOT NULL,
+    cod_afp NUMBER(1),
+    cod_rubro NUMBER(1),
+    cod_tpcontrato NUMBER(1),
+    CONSTRAINT fk_profesional_comuna FOREIGN KEY (cod_comuna) REFERENCES COMUNA(cod_comuna),
+    CONSTRAINT fk_profesional_profesion FOREIGN KEY (cod_profesion) REFERENCES PROFESION(cod_profesion),
+    CONSTRAINT fk_profesional_estado FOREIGN KEY (cod_estoval) REFERENCES ESTADO_VAL(cod_estoval),
+    CONSTRAINT fk_profesional_afp FOREIGN KEY (cod_afp) REFERENCES AFP(cod_afp),
+    CONSTRAINT fk_profesional_rubro FOREIGN KEY (cod_rubro) REFERENCES RUBRO(cod_rubro),
+    CONSTRAINT fk_profesional_contrato FOREIGN KEY (cod_tpcontrato) REFERENCES TIPO_CONTRATO(cod_tpcontrato)
+);
+
+-- Tabla PORCENTAJE_PROFESION
+CREATE TABLE PORCENTAJE_PROFESION (
+    cod_profesion NUMBER(6),
+    porc_asignacion NUMBER(5,2),
+    CONSTRAINT pk_porcentaje_profesion PRIMARY KEY (cod_profesion),
+    CONSTRAINT fk_porcentaje_profesion FOREIGN KEY (cod_profesion) REFERENCES PROFESION(cod_profesion)
+);
+
+-- Tabla ASESORIA
+CREATE TABLE ASESORIA (
+    id_asesoria NUMBER(10) PRIMARY KEY,
+    cod_empresa NUMBER(5) NOT NULL,
+    id_profesional NUMBER(10) NOT NULL,
+    monto_honorario NUMBER(8) NOT NULL,
+    fecha_asesoria DATE NOT NULL,
+    fin_asesoria DATE,
+    CONSTRAINT fk_asesoria_empresa FOREIGN KEY (cod_empresa) REFERENCES EMPRESA(cod_empresa),
+    CONSTRAINT fk_asesoria_profesional FOREIGN KEY (id_profesional) REFERENCES PROFESIONAL(id_profesional)
+);
+
+-- Tabla RESUMEN_ASESORIA_MES
+CREATE TABLE RESUMEN_ASESORIA_MES (
+    mes_proceso NUMBER(2),
+    anio_proceso NUMBER(4),
+    id_profesional NUMBER(10),
+    nombre_profesional VARCHAR2(30 BYTE),
+    cod_comuna NUMBER(5),
+    monto_honorarios NUMBER(8),
+    monto_mes NUMBER(8),
+    monto_anio_proceso NUMBER(8),
+    monto_anio_profesion NUMBER(8),
+    CONSTRAINT pk_resumen_asesoria_mes PRIMARY KEY (mes_proceso, anio_proceso, id_profesional)
+);
+
+-- =============================================
+-- POBLADO DE TABLAS CON DATOS DE EJEMPLO
+-- =============================================
+
+
+INSERT INTO COMUNA VALUES (1, 'Santiago', 1);
+INSERT INTO COMUNA VALUES (2, 'Providencia', 2);
+INSERT INTO COMUNA VALUES (3, 'Las Condes', 3);
+INSERT INTO COMUNA VALUES (4, 'Vitacura', 4);
+INSERT INTO COMUNA VALUES (5, 'Ñuñoa', 5);
+INSERT INTO COMUNA VALUES (6, 'Macul', 6);
+INSERT INTO COMUNA VALUES (7, 'La Reina', 7);
+INSERT INTO COMUNA VALUES (8, 'Maipú', 8);
+INSERT INTO COMUNA VALUES (9, 'Peñalolén', 9);
+
+
+INSERT INTO ESTADO_VAL VALUES (1, 'ACTIVO');
+INSERT INTO ESTADO_VAL VALUES (2, 'INACTIVO');
+
+
+INSERT INTO RUBRO VALUES (1, 'Banca');
+INSERT INTO RUBRO VALUES (2, 'Retail');
+INSERT INTO RUBRO VALUES (3, 'Tecnología');
+INSERT INTO RUBRO VALUES (4, 'Salud');
+INSERT INTO RUBRO VALUES (5, 'Educación');
+
+
+INSERT INTO PROFESION VALUES (1, 'Ingeniero Civil');
+INSERT INTO PROFESION VALUES (2, 'Contador General');
+INSERT INTO PROFESION VALUES (3, 'Ingeniero Industrial');
+INSERT INTO PROFESION VALUES (4, 'Ingeniero Informático');
+INSERT INTO PROFESION VALUES (5, 'Ingeniero Prevencionista');
+INSERT INTO PROFESION VALUES (6, 'Contador Auditor');
+INSERT INTO PROFESION VALUES (7, 'Ingeniero Comercial');
+
+
+INSERT INTO SECTOR VALUES (3, 'Banca');
+INSERT INTO SECTOR VALUES (4, 'Retail');
+INSERT INTO SECTOR VALUES (1, 'Tecnología');
+INSERT INTO SECTOR VALUES (2, 'Salud');
+INSERT INTO SECTOR VALUES (5, 'Educación');
+
+
+INSERT INTO AFP VALUES (1, 'Modelo');
+INSERT INTO AFP VALUES (2, 'Habitat');
+INSERT INTO AFP VALUES (3, 'Capital');
+INSERT INTO AFP VALUES (4, 'Cuprum');
+INSERT INTO AFP VALUES (5, 'PlanVital');
+
+
+INSERT INTO TIPO_CONTRATO VALUES (1, 'Indefinido', 50000);
+INSERT INTO TIPO_CONTRATO VALUES (2, 'Plazo Fijo', 30000);
+INSERT INTO TIPO_CONTRATO VALUES (3, 'Honorarios', 0);
+
+
+INSERT INTO EMPRESA VALUES (50, 3, 3, 'Banco Estado');
+INSERT INTO EMPRESA VALUES (55, 2, 3, 'Banco Santander');
+INSERT INTO EMPRESA VALUES (60, 1, 3, 'Banco de Chile');
+INSERT INTO EMPRESA VALUES (65, 4, 3, 'Scotiabank');
+INSERT INTO EMPRESA VALUES (70, 3, 4, 'Falabella Retail');
+INSERT INTO EMPRESA VALUES (75, 5, 4, 'Ripley');
+INSERT INTO EMPRESA VALUES (80, 2, 4, 'Paris');
+INSERT INTO EMPRESA VALUES (85, 6, 4, 'Hites');
+INSERT INTO EMPRESA VALUES (90, 7, 4, 'La Polar');
+INSERT INTO EMPRESA VALUES (95, 8, 4, 'ABCDIN');
+INSERT INTO EMPRESA VALUES (110, 2, 1, 'Microsoft Chile');
+INSERT INTO EMPRESA VALUES (115, 3, 1, 'Oracle Chile');
+INSERT INTO EMPRESA VALUES (120, 1, 1, 'IBM Chile');
+INSERT INTO EMPRESA VALUES (125, 5, 1, 'HP Chile');
+INSERT INTO EMPRESA VALUES (130, 4, 1, 'Dell Chile');
+
+
+INSERT INTO PROFESIONAL VALUES (50, 6057969, '9', 3, 7, 'Parsons', 'Marquez', 'Rachael', 1, 'Av. Apoquindo 4500', 550000, 1, 1, 1);
+INSERT INTO PROFESIONAL VALUES (55, 6275202, '2', 2, 3, 'Frost', 'Pineda', 'Marci', 1, 'Av. Providencia 1234', 700000, 2, 1, 1);
+INSERT INTO PROFESIONAL VALUES (60, 6502066, '6', 1, 3, 'Wilcox', 'Key', 'Leonard', 1, 'Huérfanos 789', 600000, 3, 1, 1);
+INSERT INTO PROFESIONAL VALUES (65, 6694138, '8', 4, 2, 'Phelps', 'Shepherd', 'Marcie', 1, 'Av. Vitacura 5678', 300000, 4, 1, 2);
+INSERT INTO PROFESIONAL VALUES (70, 6946767, '7', 3, 7, 'Walton', 'Marquez', 'Melissa', 1, 'Av. Las Condes 9876', 1000000, 5, 2, 1);
+INSERT INTO PROFESIONAL VALUES (75, 7034898, '8', 5, 3, 'Gamble', 'Roman', 'Travis', 1, 'Irarrázaval 3456', 1200000, 1, 2, 1);
+INSERT INTO PROFESIONAL VALUES (80, 7284220, '0', 2, 2, 'Gordon', 'Livingston', 'Latasha', 1, 'Av. Providencia 2345', 300000, 2, 2, 2);
+INSERT INTO PROFESIONAL VALUES (85, 7503210, '0', 6, 1, 'Mc Intyre', 'Chung', 'Marla', 1, 'Av. Macul 1234', 350000, 3, 3, 1);
+INSERT INTO PROFESIONAL VALUES (90, 7744083, '3', 7, 4, 'Rubio', 'Sawyer', 'Dewayne', 1, 'Av. Larraín 5678', 1900000, 4, 3, 1);
+INSERT INTO PROFESIONAL VALUES (95, 18280709, '9', 8, 5, 'Pittman', 'Frost', 'Chris', 1, 'Av. Pajaritos 9012', 280000, 5, 4, 2);
+INSERT INTO PROFESIONAL VALUES (110, 18336158, '8', 2, 6, 'Tucker', 'Hurst', 'Mark', 1, 'Av. Providencia 3456', 490000, 1, 5, 1);
+INSERT INTO PROFESIONAL VALUES (115, 18552172, '2', 3, 7, 'Fletcher', 'Montgomery', 'Kendrick', 1, 'Av. Las Condes 2345', 940000, 2, 5, 1);
+INSERT INTO PROFESIONAL VALUES (120, 18390208, '8', 1, 1, 'Wells', 'Hanna', 'Malcolm', 1, 'Huérfanos 1234', 960000, 3, 1, 1);
+INSERT INTO PROFESIONAL VALUES (125, 18421225, '5', 5, 2, 'Bowers', 'Jordan', 'Juan', 1, 'Irarrázaval 4567', 980000, 4, 2, 1);
+INSERT INTO PROFESIONAL VALUES (130, 18421226, '6', 4, 3, 'Fisher', 'Gross', 'Martin', 1, 'Av. Vitacura 6789', 950000, 5, 3, 1);
+INSERT INTO PROFESIONAL VALUES (365, 18184240, '0', 7, 6, 'Cunningham', 'Lang', 'Courtney', 1, 'Av. Larraín 1234', 880000, 1, 4, 1);
+INSERT INTO PROFESIONAL VALUES (375, 18184241, '1', 9, 4, 'Pugh', 'Wells', 'Autumn', 1, 'Av. Peñalolén 5678', 850000, 2, 4, 1);
+INSERT INTO PROFESIONAL VALUES (455, 6269943, '3', 7, 5, 'Richards', 'Pittman', 'Sheryl', 1, 'Av. La Reina 9012', 300000, 3, 5, 2);
+INSERT INTO PROFESIONAL VALUES (465, 6756480, '0', 9, 7, 'Chambers', 'Osborne', 'Leonard', 1, 'Av. Peñalolén 3456', 900000, 4, 5, 1);
+
+
+INSERT INTO PORCENTAJE_PROFESION VALUES (1, 10.50);
+INSERT INTO PORCENTAJE_PROFESION VALUES (2, 8.75);
+INSERT INTO PORCENTAJE_PROFESION VALUES (3, 12.25);
+INSERT INTO PORCENTAJE_PROFESION VALUES (4, 15.00);
+INSERT INTO PORCENTAJE_PROFESION VALUES (5, 9.50);
+INSERT INTO PORCENTAJE_PROFESION VALUES (6, 11.25);
+INSERT INTO PORCENTAJE_PROFESION VALUES (7, 13.75);
+
+-- Insertar asesorías (Basadas en las imágenes - datos del año pasado y actual)
+INSERT INTO ASESORIA VALUES (1, 50, 50, 627216, TO_DATE('2023-04-15', 'YYYY-MM-DD'), TO_DATE('2023-04-30', 'YYYY-MM-DD'));
+INSERT INTO ASESORIA VALUES (2, 55, 55, 872093, TO_DATE('2023-04-10', 'YYYY-MM-DD'), TO_DATE('2023-04-25', 'YYYY-MM-DD'));
+INSERT INTO ASESORIA VALUES (3, 60, 60, 1583353, TO_DATE('2023-04-05', 'YYYY-MM-DD'), TO_DATE('2023-04-20', 'YYYY-MM-DD'));
+INSERT INTO ASESORIA VALUES (4, 65, 65, 1055603, TO_DATE('2023-04-20', 'YYYY-MM-DD'), TO_DATE('2023-05-05', 'YYYY-MM-DD'));
+INSERT INTO ASESORIA VALUES (5, 70, 70, 875929, TO_DATE('2023-04-12', 'YYYY-MM-DD'), TO_DATE('2023-04-28', 'YYYY-MM-DD'));
+INSERT INTO ASESORIA VALUES (6, 75, 75, 256675, TO_DATE('2023-03-15', 'YYYY-MM-DD'), TO_DATE('2023-03-31', 'YYYY-MM-DD'));
+INSERT INTO ASESORIA VALUES (7, 80, 80, 904915, TO_DATE('2023-03-10', 'YYYY-MM-DD'), TO_DATE('2023-03-25', 'YYYY-MM-DD'));
+INSERT INTO ASESORIA VALUES (8, 85, 85, 841402, TO_DATE('2023-03-20', 'YYYY-MM-DD'), TO_DATE('2023-04-05', 'YYYY-MM-DD'));
+INSERT INTO ASESORIA VALUES (9, 90, 90, 883742, TO_DATE('2023-03-25', 'YYYY-MM-DD'), TO_DATE('2023-04-10', 'YYYY-MM-DD'));
+INSERT INTO ASESORIA VALUES (10, 95, 95, 743868, TO_DATE('2023-03-05', 'YYYY-MM-DD'), TO_DATE('2023-03-20', 'YYYY-MM-DD'));
+INSERT INTO ASESORIA VALUES (11, 110, 110, 613819, TO_DATE('2023-03-12', 'YYYY-MM-DD'), TO_DATE('2023-03-28', 'YYYY-MM-DD'));
+INSERT INTO ASESORIA VALUES (12, 115, 115, 1070813, TO_DATE('2023-03-18', 'YYYY-MM-DD'), TO_DATE('2023-04-02', 'YYYY-MM-DD'));
+INSERT INTO ASESORIA VALUES (13, 120, 120, 751179, TO_DATE('2023-04-22', 'YYYY-MM-DD'), TO_DATE('2023-05-07', 'YYYY-MM-DD'));
+INSERT INTO ASESORIA VALUES (14, 125, 125, 812053, TO_DATE('2023-04-18', 'YYYY-MM-DD'), TO_DATE('2023-05-03', 'YYYY-MM-DD'));
+INSERT INTO ASESORIA VALUES (15, 130, 130, 177412, TO_DATE('2023-03-22', 'YYYY-MM-DD'), TO_DATE('2023-04-06', 'YYYY-MM-DD'));
+INSERT INTO ASESORIA VALUES (16, 50, 365, 317328, TO_DATE('2023-03-28', 'YYYY-MM-DD'), TO_DATE('2023-04-12', 'YYYY-MM-DD'));
+INSERT INTO ASESORIA VALUES (17, 70, 375, 684876, TO_DATE('2023-04-08', 'YYYY-MM-DD'), TO_DATE('2023-04-23', 'YYYY-MM-DD'));
+INSERT INTO ASESORIA VALUES (18, 75, 455, 802218, TO_DATE('2023-04-14', 'YYYY-MM-DD'), TO_DATE('2023-04-29', 'YYYY-MM-DD'));
+INSERT INTO ASESORIA VALUES (19, 80, 465, 645714, TO_DATE('2023-03-30', 'YYYY-MM-DD'), TO_DATE('2023-04-14', 'YYYY-MM-DD'));
+INSERT INTO ASESORIA VALUES (20, 85, 50, 284944, TO_DATE('2023-04-25', 'YYYY-MM-DD'), TO_DATE('2023-05-10', 'YYYY-MM-DD'));
+INSERT INTO ASESORIA VALUES (21, 90, 55, 212455, TO_DATE('2023-04-02', 'YYYY-MM-DD'), TO_DATE('2023-04-17', 'YYYY-MM-DD'));
+INSERT INTO ASESORIA VALUES (22, 95, 60, 871051, TO_DATE('2023-04-30', 'YYYY-MM-DD'), TO_DATE('2023-05-15', 'YYYY-MM-DD'));
+INSERT INTO ASESORIA VALUES (23, 110, 65, 682428, TO_DATE('2023-04-17', 'YYYY-MM-DD'), TO_DATE('2023-05-02', 'YYYY-MM-DD'));
+INSERT INTO ASESORIA VALUES (24, 115, 70, 416566, TO_DATE('2023-04-05', 'YYYY-MM-DD'), TO_DATE('2023-04-20', 'YYYY-MM-DD'));
+INSERT INTO ASESORIA VALUES (25, 120, 75, 674109, TO_DATE('2023-04-28', 'YYYY-MM-DD'), TO_DATE('2023-05-13', 'YYYY-MM-DD'));
+
+
+INSERT INTO ASESORIA VALUES (26, 50, 50, 500000, TO_DATE('2023-05-10', 'YYYY-MM-DD'), TO_DATE('2023-05-25', 'YYYY-MM-DD'));
+INSERT INTO ASESORIA VALUES (27, 70, 50, 450000, TO_DATE('2023-05-15', 'YYYY-MM-DD'), TO_DATE('2023-05-30', 'YYYY-MM-DD'));
+INSERT INTO ASESORIA VALUES (28, 55, 55, 600000, TO_DATE('2023-05-05', 'YYYY-MM-DD'), TO_DATE('2023-05-20', 'YYYY-MM-DD'));
+INSERT INTO ASESORIA VALUES (29, 75, 55, 550000, TO_DATE('2023-05-12', 'YYYY-MM-DD'), TO_DATE('2023-05-27', 'YYYY-MM-DD'));
+
+COMMIT;
+
+-- =============================================
+-- CASO 1: Reportería de Asesorías
+-- =============================================
+
+
+SELECT 
+    p.id_profesional AS "PROFESIONAL",
+    p.appaterno || ' ' || p.apmaterno || ' ' || p.nombre AS "NOMBRE_COMPLETO",
+    COALESCE(banca.nro_asesorias, 0) AS "NRO_ASESORIAS_BANCA",
+    COALESCE(TO_CHAR(banca.monto_total, 'L999G999'), '$0') AS "MONTO_TOTAL_BANCA",
+    COALESCE(retail.nro_asesorias, 0) AS "NRO_ASESORIAS_RETAIL",
+    COALESCE(TO_CHAR(retail.monto_total, 'L999G999'), '$0') AS "MONTO_TOTAL_RETAIL",
+    COALESCE(banca.nro_asesorias, 0) + COALESCE(retail.nro_asesorias, 0) AS "TOTAL_ASESORIAS",
+    COALESCE(TO_CHAR(banca.monto_total + retail.monto_total, 'L999G999'), '$0') AS "TOTAL_HONORARIOS"
+FROM PROFESIONAL p
+LEFT JOIN (
+    SELECT 
+        a.id_profesional,
+        COUNT(*) AS nro_asesorias,
+        SUM(a.monto_honorario) AS monto_total
+    FROM ASESORIA a
+    JOIN EMPRESA e ON a.cod_empresa = e.cod_empresa
+    WHERE e.cod_sector = 3  -- Sector Banca
+    GROUP BY a.id_profesional
+) banca ON p.id_profesional = banca.id_profesional
+LEFT JOIN (
+    SELECT 
+        a.id_profesional,
+        COUNT(*) AS nro_asesorias,
+        SUM(a.monto_honorario) AS monto_total
+    FROM ASESORIA a
+    JOIN EMPRESA e ON a.cod_empresa = e.cod_empresa
+    WHERE e.cod_sector = 4  -- Sector Retail
+    GROUP BY a.id_profesional
+) retail ON p.id_profesional = retail.id_profesional
+WHERE (banca.nro_asesorias > 0 AND retail.nro_asesorias > 0)
+    OR (banca.nro_asesorias > 0 AND retail.nro_asesorias IS NULL)
+    OR (banca.nro_asesorias IS NULL AND retail.nro_asesorias > 0)
+ORDER BY p.id_profesional ASC;
+
+-- =============================================
+-- CASO 2: Resumen de Honorarios
+-- =============================================
+
+
+BEGIN
+    EXECUTE IMMEDIATE 'DROP TABLE REPORTE_MES';
+EXCEPTION
+    WHEN OTHERS THEN
+        IF SQLCODE != -942 THEN
+            RAISE;
+        END IF;
+END;
+/
+
+-- Crear tabla REPORTE_MES con los datos requeridos
+CREATE TABLE REPORTE_MES AS
+SELECT 
+    p.id_profesional AS "ID_PROF",
+    p.appaterno || ' ' || p.apmaterno || ' ' || p.nombre AS "NOMBRE_PROFESIONAL",
+    pr.nombre_profesion AS "NOMBRE_PROFESION",
+    c.nom_comuna AS "NOM_COMUNA",
+    COUNT(a.id_asesoria) AS "NRO_ASESORIAS",
+    TO_CHAR(SUM(a.monto_honorario), 'L999G999') AS "MONTO_TOTAL",
+    TO_CHAR(ROUND(AVG(a.monto_honorario)), 'L999G999') AS "PROMEDIO_HONORARIO",
+    TO_CHAR(MIN(a.monto_honorario), 'L999G999') AS "HONORARIO_MINIMO",
+    TO_CHAR(MAX(a.monto_honorario), 'L999G999') AS "HONORARIO_MAXIMO"
+FROM PROFESIONAL p
+JOIN PROFESION pr ON p.cod_profesion = pr.cod_profesion
+JOIN COMUNA c ON p.cod_comuna = c.cod_comuna
+JOIN ASESORIA a ON p.id_profesional = a.id_profesional
+WHERE EXTRACT(YEAR FROM a.fin_asesoria) = EXTRACT(YEAR FROM SYSDATE) - 1
+    AND EXTRACT(MONTH FROM a.fin_asesoria) = 4  -- Abril del año pasado
+    AND a.fin_asesoria IS NOT NULL
+GROUP BY p.id_profesional, p.appaterno, p.apmaterno, p.nombre, 
+         pr.nombre_profesion, c.nom_comuna
+ORDER BY p.id_profesional ASC;
+
+
+SELECT * FROM REPORTE_MES;
+
+-- =============================================
+-- CASO 3: Modificación de Honorarios
+-- =============================================
+
+-- PASO 1: Reporte ANTES de la actualización
+SELECT 
+    p.id_profesional,
+    p.appaterno || ' ' || p.apmaterno || ' ' || p.nombre AS "NOMBRE_PROFESIONAL",
+    TO_CHAR(SUM(a.monto_honorario), 'L999G999') AS "TOTAL_HONORARIOS_MARZO",
+    TO_CHAR(p.sueldo, 'L999G999') AS "SUELDO_ACTUAL"
+FROM PROFESIONAL p
+JOIN ASESORIA a ON p.id_profesional = a.id_profesional
+WHERE EXTRACT(YEAR FROM a.fin_asesoria) = EXTRACT(YEAR FROM SYSDATE) - 1
+    AND EXTRACT(MONTH FROM a.fin_asesoria) = 3  -- Marzo del año pasado
+    AND a.fin_asesoria IS NOT NULL
+GROUP BY p.id_profesional, p.appaterno, p.apmaterno, p.nombre, p.sueldo
+HAVING SUM(a.monto_honorario) > 0
+ORDER BY p.id_profesional;
+
+-- PASO 2: Actualizar sueldos según las condiciones
+UPDATE PROFESIONAL p
+SET sueldo = CASE 
+    WHEN EXISTS (
+        SELECT 1
+        FROM ASESORIA a
+        WHERE a.id_profesional = p.id_profesional
+            AND EXTRACT(YEAR FROM a.fin_asesoria) = EXTRACT(YEAR FROM SYSDATE) - 1
+            AND EXTRACT(MONTH FROM a.fin_asesoria) = 3
+            AND a.fin_asesoria IS NOT NULL
+        HAVING SUM(a.monto_honorario) < 1000000
+        GROUP BY a.id_profesional
+    ) THEN p.sueldo * 1.10  -- Aumento del 10%
+    WHEN EXISTS (
+        SELECT 1
+        FROM ASESORIA a
+        WHERE a.id_profesional = p.id_profesional
+            AND EXTRACT(YEAR FROM a.fin_asesoria) = EXTRACT(YEAR FROM SYSDATE) - 1
+            AND EXTRACT(MONTH FROM a.fin_asesoria) = 3
+            AND a.fin_asesoria IS NOT NULL
+        HAVING SUM(a.monto_honorario) >= 1000000
+        GROUP BY a.id_profesional
+    ) THEN p.sueldo * 1.15  -- Aumento del 15%
+    ELSE p.sueldo
+END
+WHERE EXISTS (
+    SELECT 1
+    FROM ASESORIA a
+    WHERE a.id_profesional = p.id_profesional
+        AND EXTRACT(YEAR FROM a.fin_asesoria) = EXTRACT(YEAR FROM SYSDATE) - 1
+        AND EXTRACT(MONTH FROM a.fin_asesoria) = 3
+        AND a.fin_asesoria IS NOT NULL
+);
+
+COMMIT;
+
+-- PASO 3: Reporte DESPUÉS de la actualización
+SELECT 
+    p.id_profesional,
+    p.appaterno || ' ' || p.apmaterno || ' ' || p.nombre AS "NOMBRE_PROFESIONAL",
+    TO_CHAR(SUM(a.monto_honorario), 'L999G999') AS "TOTAL_HONORARIOS_MARZO",
+    TO_CHAR(p.sueldo, 'L999G999') AS "SUELDO_ACTUALIZADO"
+FROM PROFESIONAL p
+JOIN ASESORIA a ON p.id_profesional = a.id_profesional
+WHERE EXTRACT(YEAR FROM a.fin_asesoria) = EXTRACT(YEAR FROM SYSDATE) - 1
+    AND EXTRACT(MONTH FROM a.fin_asesoria) = 3  -- Marzo del año pasado
+    AND a.fin_asesoria IS NOT NULL
+GROUP BY p.id_profesional, p.appaterno, p.apmaterno, p.nombre, p.sueldo
+HAVING SUM(a.monto_honorario) > 0
+ORDER BY p.id_profesional;
+
+
+
+-- Verificar conteo de registros
+SELECT 'PROFESIONAL' AS tabla, COUNT(*) AS cantidad FROM PROFESIONAL
+UNION ALL
+SELECT 'ASESORIA', COUNT(*) FROM ASESORIA
+UNION ALL
+SELECT 'EMPRESA', COUNT(*) FROM EMPRESA
+UNION ALL
+SELECT 'REPORTE_MES', COUNT(*) FROM REPORTE_MES;
+
+-- Mostrar algunos datos de ejemplo
+SELECT * FROM PROFESIONAL WHERE id_profesional IN (50, 55, 60, 70);
+SELECT * FROM ASESORIA WHERE id_profesional = 50;
