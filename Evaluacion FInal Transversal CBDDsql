@@ -1,0 +1,423 @@
+-- ============================================
+-- MONTENEGRO S.A.
+-- Autor: [Jean Santoni]
+-- Fecha: [12/16/25]
+
+
+-- PARTE I: EJECUCIÓN POR USUARIO ADMIN/SYS/SYSTEM
+
+-- ============================================
+-- 1. CREACIÓN DE USUARIOS
+-- ============================================
+
+-- Crear usuario PRY2205_EFT 
+CREATE USER PRY2205_EFT IDENTIFIED BY "M0nT3n3gr0#2024"
+DEFAULT TABLESPACE USERS
+TEMPORARY TABLESPACE TEMP
+QUOTA 10M ON USERS
+PASSWORD EXPIRE;
+
+-- Crear usuario PRY2205_EFT_DES 
+CREATE USER PRY2205_EFT_DES IDENTIFIED BY "D3s@rr0ll0#2024"
+DEFAULT TABLESPACE USERS
+TEMPORARY TABLESPACE TEMP
+QUOTA 10M ON USERS
+PASSWORD EXPIRE;
+
+-- Crear usuario PRY2205_EFT_CON 
+CREATE USER PRY2205_EFT_CON IDENTIFIED BY "C0nsult@#2024"
+DEFAULT TABLESPACE USERS
+TEMPORARY TABLESPACE TEMP
+QUOTA 10M ON USERS
+PASSWORD EXPIRE;
+
+-- ============================================
+-- 2. PRIVILEGIOS BÁSICOS PARA LOS USUARIOS
+-- ============================================
+
+-- Para PRY2205_EFT
+GRANT CREATE SESSION TO PRY2205_EFT;
+GRANT CREATE TABLE TO PRY2205_EFT;
+GRANT CREATE VIEW TO PRY2205_EFT;
+GRANT CREATE SEQUENCE TO PRY2205_EFT;
+GRANT CREATE SYNONYM TO PRY2205_EFT;
+GRANT CREATE INDEX TO PRY2205_EFT;
+GRANT UNLIMITED TABLESPACE TO PRY2205_EFT;
+
+-- Para PRY2205_EFT_DES
+GRANT CREATE SESSION TO PRY2205_EFT_DES;
+GRANT CREATE VIEW TO PRY2205_EFT_DES;
+GRANT CREATE SYNONYM TO PRY2205_EFT_DES;
+
+-- Para PRY2205_EFT_CON
+GRANT CREATE SESSION TO PRY2205_EFT_CON;
+
+-- ============================================
+-- 3. CREACIÓN DE ROLES
+-- ============================================
+
+-- Crear rol para desarrollador
+CREATE ROLE PRY2205_ROL_D;
+
+-- Crear rol para consulta
+CREATE ROLE PRY2205_ROL_C;
+
+-- Asignar privilegios al rol de desarrollador
+GRANT CREATE VIEW TO PRY2205_ROL_D;
+GRANT CREATE SYNONYM TO PRY2205_ROL_D;
+
+-- Asignar roles a usuarios
+GRANT PRY2205_ROL_D TO PRY2205_EFT_DES;
+GRANT PRY2205_ROL_C TO PRY2205_EFT_CON;
+
+-- ============================================
+-- PARTE II: EJECUCIÓN POR USUARIO PRY2205_EFT
+-- ============================================
+
+-- ============================================
+-- 1. CREACIÓN DE TABLAS (MODELO ASESORÍAS)
+-- ============================================
+
+-- Tabla PROFESIONALES
+CREATE TABLE PROFESIONALES (
+    rut_profesional VARCHAR2(12) PRIMARY KEY,
+    nombres VARCHAR2(50) NOT NULL,
+    apellido_paterno VARCHAR2(30) NOT NULL,
+    apellido_materno VARCHAR2(30) NOT NULL,
+    profesion VARCHAR2(50) NOT NULL,
+    sueldo_base NUMBER(10) NOT NULL,
+    porcentaje_comision NUMBER(5,2),
+    id_isapre NUMBER,
+    tipo_contrato VARCHAR2(30) NOT NULL
+);
+
+-- Tabla ISAPRES
+CREATE TABLE ISAPRES (
+    id_isapre NUMBER PRIMARY KEY,
+    nombre_isapre VARCHAR2(50) NOT NULL
+);
+
+-- Tabla EMPRESAS
+CREATE TABLE EMPRESAS (
+    rut_empresa VARCHAR2(12) PRIMARY KEY,
+    nombre_empresa VARCHAR2(100) NOT NULL,
+    fecha_inicio_actividades DATE NOT NULL,
+    iva_declarado NUMBER(15) NOT NULL
+);
+
+-- Tabla ASESORIAS
+CREATE TABLE ASESORIAS (
+    id_asesoria NUMBER PRIMARY KEY,
+    rut_empresa VARCHAR2(12) NOT NULL,
+    rut_profesional VARCHAR2(12) NOT NULL,
+    fecha_inicio DATE NOT NULL,
+    fecha_termino DATE,
+    estado VARCHAR2(20) NOT NULL,
+    CONSTRAINT fk_empresa FOREIGN KEY (rut_empresa) REFERENCES EMPRESAS(rut_empresa),
+    CONSTRAINT fk_profesional FOREIGN KEY (rut_profesional) REFERENCES PROFESIONALES(rut_profesional)
+);
+
+-- Tabla CARTOLA_PROFESIONALES (para almacenar informe)
+CREATE TABLE CARTOLA_PROFESIONALES (
+    id_cartola NUMBER PRIMARY KEY,
+    rut_profesional VARCHAR2(12) NOT NULL,
+    nombre_completo VARCHAR2(100) NOT NULL,
+    profesion VARCHAR2(50) NOT NULL,
+    nombre_isapre VARCHAR2(50) NOT NULL,
+    sueldo_base NUMBER(10) NOT NULL,
+    comision_total NUMBER(10) DEFAULT 0,
+    honorarios_total NUMBER(10) DEFAULT 0,
+    bono_movilizacion NUMBER(10) NOT NULL,
+    total_pagar NUMBER(12) NOT NULL,
+    fecha_calculo DATE DEFAULT SYSDATE
+);
+
+-- Tabla RANGO_HONORARIOS
+CREATE TABLE RANGO_HONORARIOS (
+    id_rango NUMBER PRIMARY KEY,
+    limite_inferior NUMBER(10) NOT NULL,
+    limite_superior NUMBER(10) NOT NULL,
+    porcentaje_honorario NUMBER(3) NOT NULL
+);
+
+-- Secuencia para cartola
+CREATE SEQUENCE seq_cartola START WITH 1 INCREMENT BY 1;
+
+
+-- Insertar datos en RANGO_HONORARIOS (según imagen proporcionada)
+INSERT INTO RANGO_HONORARIOS VALUES (1, 150000, 300000, 40);
+INSERT INTO RANGO_HONORARIOS VALUES (2, 300001, 500000, 38);
+INSERT INTO RANGO_HONORARIOS VALUES (3, 500001, 800000, 36);
+INSERT INTO RANGO_HONORARIOS VALUES (4, 800001, 1200000, 34);
+INSERT INTO RANGO_HONORARIOS VALUES (5, 1200001, 1500000, 30);
+INSERT INTO RANGO_HONORARIOS VALUES (6, 1500001, 2000000, 28);
+INSERT INTO RANGO_HONORARIOS VALUES (7, 2000001, 3000000, 26);
+INSERT INTO RANGO_HONORARIOS VALUES (8, 3000001, 5000000, 24);
+
+COMMIT;
+
+-- ============================================
+-- 3. CREACIÓN DE SINÓNIMOS PÚBLICOS
+-- ============================================
+
+-- Sinónimos públicos para tablas principales
+CREATE PUBLIC SYNONYM pub_profesionales FOR PRY2205_EFT.PROFESIONALES;
+CREATE PUBLIC SYNONYM pub_isapres FOR PRY2205_EFT.ISAPRES;
+CREATE PUBLIC SYNONYM pub_empresas FOR PRY2205_EFT.EMPRESAS;
+CREATE PUBLIC SYNONYM pub_asesorias FOR PRY2205_EFT.ASESORIAS;
+CREATE PUBLIC SYNONYM pub_rango_honorarios FOR PRY2205_EFT.RANGO_HONORARIOS;
+
+-- ============================================
+-- 4. CONCESIÓN DE PERMISOS A ROLES
+-- ============================================
+
+-- Otorgar permisos de SELECT al rol de desarrollador
+GRANT SELECT ON PROFESIONALES TO PRY2205_ROL_D;
+GRANT SELECT ON ISAPRES TO PRY2205_ROL_D;
+GRANT SELECT ON RANGO_HONORARIOS TO PRY2205_ROL_D;
+
+-- Otorgar permisos de SELECT al rol de consulta
+GRANT SELECT ON CARTOLA_PROFESIONALES TO PRY2205_ROL_C;
+
+-- ============================================
+-- 5. CREACIÓN DE VISTA VW_EMPRESAS_ASESORADAS
+-- ============================================
+
+CREATE OR REPLACE VIEW VW_EMPRESAS_ASESORADAS AS
+SELECT 
+    e.rut_empresa AS RUT_EMPRESA,
+    e.nombre_empresa AS NOMBRE_EMPRESA,
+    TRUNC(MONTHS_BETWEEN(SYSDATE, e.fecha_inicio_actividades) / 12) AS ANOS_EXISTENCIA,
+    e.iva_declarado AS IVA_DECLARADO,
+    NVL(ROUND(COUNT(a.id_asesoria) / 12, 0), 0) AS TOTAL_ASESORIAS_PROMEDIO_ANUAL,
+    ROUND(e.iva_declarado * (NVL(COUNT(a.id_asesoria), 0) / 12) / 100, 0) AS DEVOLUCION_IVA_ESTIMADA,
+    CASE 
+        WHEN NVL(ROUND(COUNT(a.id_asesoria) / 12, 0), 0) > 5 THEN 'CLIENTE PREMIUM'
+        WHEN NVL(ROUND(COUNT(a.id_asesoria) / 12, 0), 0) BETWEEN 3 AND 5 THEN 'CLIENTE'
+        ELSE 'CLIENTE POCO CONCURRIDO'
+    END AS TIPO_CLIENTE,
+    CASE 
+        WHEN NVL(ROUND(COUNT(a.id_asesoria) / 12, 0), 0) > 5 THEN
+            CASE 
+                WHEN COUNT(a.id_asesoria) >= 7 THEN '1 ASESORÍA GRATIS'
+                ELSE '1 ASESORÍA 40% DE DESCUENTO'
+            END
+        WHEN NVL(ROUND(COUNT(a.id_asesoria) / 12, 0), 0) BETWEEN 3 AND 5 THEN
+            CASE 
+                WHEN COUNT(a.id_asesoria) = 5 THEN '1 ASESORÍA 30% DE DESCUENTO'
+                ELSE '1 ASESORÍA 20% DE DESCUENTO'
+            END
+        ELSE 'CAPTAR CLIENTE'
+    END AS PROMOCION_RECOMENDACION
+FROM 
+    EMPRESAS e
+LEFT JOIN 
+    ASESORIAS a ON e.rut_empresa = a.rut_empresa
+    AND EXTRACT(YEAR FROM a.fecha_termino) = EXTRACT(YEAR FROM SYSDATE) - 1
+    AND a.estado = 'TERMINADA'
+GROUP BY 
+    e.rut_empresa, 
+    e.nombre_empresa, 
+    e.fecha_inicio_actividades, 
+    e.iva_declarado
+ORDER BY 
+    e.nombre_empresa ASC;
+
+-- Otorgar permiso de SELECT sobre la vista al rol de consulta
+GRANT SELECT ON VW_EMPRESAS_ASESORADAS TO PRY2205_ROL_C;
+
+-- ============================================
+-- 6. CREACIÓN DE ÍNDICES PARA OPTIMIZACIÓN
+-- ============================================
+
+-- Índice para mejorar consultas en ASESORIAS por fecha_termino
+CREATE INDEX idx_asesorias_fecha_termino ON ASESORIAS(fecha_termino);
+
+-- Índice para mejorar consultas en ASESORIAS por estado
+CREATE INDEX idx_asesorias_estado ON ASESORIAS(estado);
+
+-- Índice compuesto para mejorar JOIN entre EMPRESAS y ASESORIAS
+CREATE INDEX idx_empresa_asesoria ON ASESORIAS(rut_empresa, fecha_termino, estado);
+
+-- Índice para PROFESIONALES por tipo_contrato (usado en bono movilización)
+CREATE INDEX idx_profesionales_contrato ON PROFESIONALES(tipo_contrato);
+
+
+
+-- ============================================
+-- PARTE III
+-- ============================================
+
+
+-- ============================================
+-- 1. CREACIÓN DE SINÓNIMOS PRIVADOS
+-- ============================================
+
+CREATE SYNONYM sin_profesionales FOR pub_profesionales;
+CREATE SYNONYM sin_isapres FOR pub_isapres;
+CREATE SYNONYM sin_rango_honorarios FOR pub_rango_honorarios;
+
+-- ============================================
+-- 2. SENTENCIA SQL PARA INFORME DE REMUNERACIONES
+-- ============================================
+
+
+
+-- Insertar datos en CARTOLA_PROFESIONALES
+INSERT INTO PRY2205_EFT.CARTOLA_PROFESIONALES (
+    id_cartola,
+    rut_profesional,
+    nombre_completo,
+    profesion,
+    nombre_isapre,
+    sueldo_base,
+    comision_total,
+    honorarios_total,
+    bono_movilizacion,
+    total_pagar,
+    fecha_calculo
+)
+SELECT 
+    seq_cartola.NEXTVAL,
+    p.rut_profesional,
+    p.nombres || ' ' || p.apellido_paterno || ' ' || p.apellido_materno AS nombre_completo,
+    p.profesion,
+    i.nombre_isapre,
+    p.sueldo_base,
+  
+    NVL(ROUND(p.sueldo_base * p.porcentaje_comision / 100, 0), 0) AS comision_total,
+    -- Cálculo de honorarios según rango
+    NVL((
+        SELECT ROUND(p.sueldo_base * rh.porcentaje_honorario / 100, 0)
+        FROM sin_rango_honorarios rh
+        WHERE p.sueldo_base BETWEEN rh.limite_inferior AND rh.limite_superior
+    ), 0) AS honorarios_total,
+    -- Cálculo de bono según tipo de contrato
+    CASE p.tipo_contrato
+        WHEN 'Indefinido Jornada Completa' THEN 150000
+        WHEN 'Indefinido Jornada Parcial' THEN 120000
+        WHEN 'Plazo fijo' THEN 60000
+        WHEN 'Honorarios' THEN 50000
+        ELSE 0
+    END AS bono_movilizacion,
+    -- Cálculo del total a pagar
+    p.sueldo_base + 
+    NVL(ROUND(p.sueldo_base * p.porcentaje_comision / 100, 0), 0) + 
+    NVL((
+        SELECT ROUND(p.sueldo_base * rh.porcentaje_honorario / 100, 0)
+        FROM sin_rango_honorarios rh
+        WHERE p.sueldo_base BETWEEN rh.limite_inferior AND rh.limite_superior
+    ), 0) + 
+    CASE p.tipo_contrato
+        WHEN 'Indefinido Jornada Completa' THEN 150000
+        WHEN 'Indefinido Jornada Parcial' THEN 120000
+        WHEN 'Plazo fijo' THEN 60000
+        WHEN 'Honorarios' THEN 50000
+        ELSE 0
+    END AS total_pagar,
+    SYSDATE
+FROM 
+    sin_profesionales p
+JOIN 
+    sin_isapres i ON p.id_isapre = i.id_isapre
+ORDER BY 
+    p.profesion,
+    p.sueldo_base DESC,
+    NVL(p.porcentaje_comision, 0) DESC,
+    p.rut_profesional;
+
+COMMIT;
+
+-- ============================================
+-- 3. CONSULTA PARA VERIFICAR EL INFORME
+-- ============================================
+
+SELECT 
+    rut_profesional AS "RUT",
+    nombre_completo AS "NOMBRE COMPLETO",
+    profesion AS "PROFESION",
+    nombre_isapre AS "ISAPRE",
+    sueldo_base AS "SUELDO BASE",
+    comision_total AS "COMISIÓN",
+    honorarios_total AS "HONORARIOS",
+    bono_movilizacion AS "BONO MOVILIZACIÓN",
+    total_pagar AS "TOTAL A PAGAR"
+FROM 
+    PRY2205_EFT.CARTOLA_PROFESIONALES
+ORDER BY 
+    profesion,
+    sueldo_base DESC,
+    comision_total DESC,
+    rut_profesional;
+
+
+-- ============================================
+-- PARTE IV:
+-- ============================================
+
+
+-- ============================================
+-- 1. CREACIÓN DE SINÓNIMOS PRIVADOS
+-- ============================================
+
+CREATE SYNONYM sin_cartola FOR PRY2205_EFT.CARTOLA_PROFESIONALES;
+CREATE SYNONYM sin_vw_empresas FOR PRY2205_EFT.VW_EMPRESAS_ASESORADAS;
+
+-- ============================================
+-- 2. CONSULTAS DE INFORMES DISPONIBLES
+-- ============================================
+
+-- Consultar informe de remuneraciones
+SELECT * FROM sin_cartola ORDER BY fecha_calculo DESC;
+
+-- Consultar vista de empresas asesoradas
+SELECT * FROM sin_vw_empresas;
+
+-- ============================================
+-- 3. EJEMPLO DE CONSULTA ESPECÍFICA
+-- ============================================
+
+-- Consultar empresas premium
+SELECT 
+    RUT_EMPRESA,
+    NOMBRE_EMPRESA,
+    ANOS_EXISTENCIA,
+    DEVOLUCION_IVA_ESTIMADA,
+    TIPO_CLIENTE,
+    PROMOCION_RECOMENDACION
+FROM 
+    sin_vw_empresas
+WHERE 
+    TIPO_CLIENTE = 'CLIENTE PREMIUM'
+ORDER BY 
+    DEVOLUCION_IVA_ESTIMADA DESC;
+
+-- ============================================
+-- PARTE V: SENTENCIAS ADICIONALES DE GESTIÓN
+-- ============================================
+
+-- Verificar usuarios creados
+SELECT username, account_status, created, default_tablespace 
+FROM dba_users 
+WHERE username LIKE 'PRY2205%';
+
+-- Verificar roles
+SELECT * FROM dba_roles WHERE role LIKE 'PRY2205%';
+
+-- Verificar privilegios de roles
+SELECT grantee, granted_role FROM dba_role_privs WHERE grantee LIKE 'PRY2205%';
+
+-- Verificar sinónimos públicos
+SELECT * FROM dba_synonyms WHERE owner = 'PUBLIC' AND table_name LIKE '%PRY2205%';
+
+-- Verificar tablas creadas
+SELECT table_name, tablespace_name, num_rows 
+FROM dba_tables 
+WHERE owner = 'PRY2205_EFT';
+
+-- Verificar índices creados
+SELECT index_name, table_name, uniqueness 
+FROM dba_indexes 
+WHERE owner = 'PRY2205_EFT';
+*/
+
