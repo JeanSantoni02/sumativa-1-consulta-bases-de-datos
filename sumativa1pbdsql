@@ -1,0 +1,211 @@
+
+TRUNCATE TABLE USUARIO_CLAVE;
+
+
+DECLARE
+
+    v_fecha_proceso DATE := SYSDATE;
+    
+    -- Variables con %TYPE
+    v_id_emp empleado.id_emp%TYPE;
+    v_nombre_emp empleado.nombre_emp%TYPE;
+    v_estado_civil empleado.estado_civil%TYPE;
+    v_fecha_contrato empleado.fecha_contrato%TYPE;
+    v_sueldo_base empleado.sueldo_base%TYPE;
+    v_run empleado.run%TYPE;
+    v_dv_run empleado.dv_run%TYPE;
+    v_fecha_nac empleado.fecha_nacimiento%TYPE;
+    v_apellido_paterno VARCHAR2(50);
+    
+    -- Variables auxiliares
+    v_primer_nombre VARCHAR2(50);
+    v_long_nombre NUMBER;
+    v_anios_trabajando NUMBER;
+    v_anio_nacimiento NUMBER;
+    v_digito_sueldo CHAR(1);
+    v_tres_ultimos_sueldo VARCHAR2(3);
+    v_letras_apellido VARCHAR2(2);
+    
+    -- Variables para resultado final
+    v_nombre_usuario VARCHAR2(50);
+    v_clave_usuario VARCHAR2(50);
+    
+    -- Contador
+    v_contador_iteraciones NUMBER := 0;
+    v_total_empleados NUMBER;
+    
+    -- Cursor para procesar empleados
+    CURSOR c_empleados IS
+        SELECT e.id_emp, e.nombre_emp, e.estado_civil, 
+               e.fecha_contrato, e.sueldo_base, e.run, e.dv_run,
+               e.fecha_nacimiento, e.apellido_paterno
+        FROM empleado e
+        WHERE e.id_emp BETWEEN 100 AND 320
+        ORDER BY e.id_emp;
+    
+BEGIN
+    -- Obtener total de empleados
+    SELECT COUNT(*) INTO v_total_empleados 
+    FROM empleado 
+    WHERE id_emp BETWEEN 100 AND 320;
+    
+    -- Iniciar procesamiento
+    DBMS_OUTPUT.PUT_LINE('Iniciando proceso de generación de usuarios y claves...');
+    DBMS_OUTPUT.PUT_LINE('Fecha de proceso: ' || TO_CHAR(v_fecha_proceso, 'DD/MM/YYYY'));
+    
+    -- Recorrer todos los empleados
+    FOR emp_rec IN c_empleados LOOP
+        v_contador_iteraciones := v_contador_iteraciones + 1;
+        
+        -- Asignar valores del cursor a variables
+        v_id_emp := emp_rec.id_emp;
+        v_nombre_emp := emp_rec.nombre_emp;
+        v_estado_civil := emp_rec.estado_civil;
+        v_fecha_contrato := emp_rec.fecha_contrato;
+        v_sueldo_base := emp_rec.sueldo_base;
+        v_run := emp_rec.run;
+        v_dv_run := emp_rec.dv_run;
+        v_fecha_nac := emp_rec.fecha_nacimiento;
+        v_apellido_paterno := emp_rec.apellido_paterno;
+        
+       
+        -- Extraer el primer nombre del nombre completo
+        -- Se usa INSTR para encontrar el primer espacio y SUBSTR para extraer
+        v_primer_nombre := SUBSTR(v_nombre_emp, 1, INSTR(v_nombre_emp || ' ', ' ') - 1);
+        
+        -- Calcular longitud del primer nombre
+        v_long_nombre := LENGTH(v_primer_nombre);
+        
+        -- Calcular años trabajando (redondeado a entero)
+        v_anios_trabajando := ROUND(MONTHS_BETWEEN(v_fecha_proceso, v_fecha_contrato) / 12);
+        
+        -- Obtener año de nacimiento aumentado en 2
+        v_anio_nacimiento := EXTRACT(YEAR FROM v_fecha_nac) + 2;
+        
+        -- Obtener último dígito del sueldo base
+        v_digito_sueldo := SUBSTR(TO_CHAR(ROUND(v_sueldo_base)), -1, 1);
+        
+        -- Obtener tres últimos dígitos del sueldo base disminuido en 1
+        v_tres_ultimos_sueldo := LPAD(TO_CHAR(MOD(ROUND(v_sueldo_base) - 1, 1000)), 3, '0');
+        IF LENGTH(v_tres_ultimos_sueldo) > 3 THEN
+            v_tres_ultimos_sueldo := SUBSTR(v_tres_ultimos_sueldo, -3);
+        END IF;
+        
+       
+        -- Determinar letras del apellido según estado civil
+        -- Se usa una estructura CASE para manejar las diferentes condiciones
+        CASE UPPER(v_estado_civil)
+            WHEN 'CASADO' THEN
+                v_letras_apellido := LOWER(SUBSTR(v_apellido_paterno, 1, 2));
+            WHEN 'ACUERDO UNION' THEN
+                v_letras_apellido := LOWER(SUBSTR(v_apellido_paterno, 1, 2));
+            WHEN 'DIVORCIADO' THEN
+                v_letras_apellido := LOWER(
+                    SUBSTR(v_apellido_paterno, 1, 1) || 
+                    SUBSTR(v_apellido_paterno, -1, 1)
+                );
+            WHEN 'SOLTERO' THEN
+                v_letras_apellido := LOWER(
+                    SUBSTR(v_apellido_paterno, 1, 1) || 
+                    SUBSTR(v_apellido_paterno, -1, 1)
+                );
+            WHEN 'VIUDO' THEN
+                v_letras_apellido := LOWER(
+                    SUBSTR(v_apellido_paterno, -3, 1) || 
+                    SUBSTR(v_apellido_paterno, -2, 1)
+                );
+            WHEN 'SEPARADO' THEN
+                v_letras_apellido := LOWER(SUBSTR(v_apellido_paterno, -2, 2));
+            ELSE
+                v_letras_apellido := 'xx'; -- Valor por defecto
+        END CASE;
+        
+       
+        -- Obtener primera letra del estado civil
+        -- Se usa SUBSTR para extraer el primer carácter del estado civil
+        DECLARE
+            v_primera_letra_estado CHAR(1);
+        BEGIN
+            SELECT LOWER(SUBSTR(estado_civil, 1, 1))
+            INTO v_primera_letra_estado
+            FROM empleado
+            WHERE id_emp = v_id_emp;
+            
+            -- Construir nombre de usuario
+            v_nombre_usuario := v_primera_letra_estado || 
+                               UPPER(SUBSTR(v_primer_nombre, 1, 3)) ||
+                               v_long_nombre || '*' ||
+                               v_digito_sueldo || 
+                               v_dv_run ||
+                               v_anios_trabajando;
+            
+            -- Agregar X si lleva menos de 10 años
+            IF v_anios_trabajando < 10 THEN
+                v_nombre_usuario := v_nombre_usuario || 'X';
+            END IF;
+        END;
+        
+        -- Obtener tercer dígito del RUN
+        DECLARE
+            v_tercer_digito_run CHAR(1);
+        BEGIN
+           
+            -- Extraer el tercer dígito del RUN
+            -- Se convierte el RUN a texto y se extrae la posición 3
+            SELECT SUBSTR(TO_CHAR(run), 3, 1)
+            INTO v_tercer_digito_run
+            FROM empleado
+            WHERE id_emp = v_id_emp;
+            
+            -- Construir clave de usuario
+            v_clave_usuario := v_tercer_digito_run ||
+                              v_anio_nacimiento ||
+                              v_tres_ultimos_sueldo ||
+                              v_letras_apellido ||
+                              v_id_emp ||
+                              TO_CHAR(v_fecha_proceso, 'MMYYYY');
+        END;
+        
+        -- Insertar en la tabla USUARIO_CLAVE
+        INSERT INTO USUARIO_CLAVE (
+            id_emp, numrun_emp, dvrun_emp, nombre_empleado, 
+            nombre_usuario, clave_usuario
+        ) VALUES (
+            v_id_emp,
+            v_run,
+            v_dv_run,
+            v_nombre_emp,
+            v_nombre_usuario,
+            v_clave_usuario
+        );
+        
+        
+        IF MOD(v_contador_iteraciones, 5) = 0 THEN
+            DBMS_OUTPUT.PUT_LINE('Procesados ' || v_contador_iteraciones || 
+                               ' de ' || v_total_empleados || ' empleados...');
+        END IF;
+        
+    END LOOP;
+    
+    -- Verificar que se procesaron todos los empleados
+    IF v_contador_iteraciones = v_total_empleados THEN
+        COMMIT; -- Confirmar transacción
+        DBMS_OUTPUT.PUT_LINE('==========================================');
+        DBMS_OUTPUT.PUT_LINE('PROCESO COMPLETADO EXITOSAMENTE');
+        DBMS_OUTPUT.PUT_LINE('Total empleados procesados: ' || v_contador_iteraciones);
+        DBMS_OUTPUT.PUT_LINE('Transacción confirmada.');
+        DBMS_OUTPUT.PUT_LINE('==========================================');
+    ELSE
+        ROLLBACK; -- Revertir transacción
+        DBMS_OUTPUT.PUT_LINE('ERROR: No se procesaron todos los empleados');
+        DBMS_OUTPUT.PUT_LINE('Esperados: ' || v_total_empleados);
+        DBMS_OUTPUT.PUT_LINE('Procesados: ' || v_contador_iteraciones);
+    END IF;
+    
+EXCEPTION
+    WHEN OTHERS THEN
+        ROLLBACK;
+        DBMS_OUTPUT.PUT_LINE('ERROR: ' || SQLERRM);
+        DBMS_OUTPUT.PUT_LINE('Código error: ' || SQLCODE);
+END;
+/
