@@ -1,0 +1,296 @@
+-- CASO 1: Generación de puntos CATB
+DECLARE
+    -- Variables para parámetros de puntos extras
+    v_puntos_normales NUMBER := 250; -- Puntos normales por cada $100.000
+    v_puntos_extras1  NUMBER := 300; -- Puntos extras para rango $500.000 - $700.000
+    v_puntos_extras2  NUMBER := 550; -- Puntos extras para rango $700.001 - $900.000
+    v_puntos_extras3  NUMBER := 700; -- Puntos extras para monto > $900.000
+
+    -- VARRAY para almacenar puntos normales y extras
+    TYPE t_puntos_varray IS VARRAY(4) OF NUMBER;
+    v_puntos t_puntos_varray := t_puntos_varray(v_puntos_normales, v_puntos_extras1, v_puntos_extras2, v_puntos_extras3);
+
+    -- Variables para cursores
+    CURSOR c_transacciones IS
+        SELECT 
+            c.numrun, 
+            c.dvrun, 
+            t.nro_tarjeta, 
+            t.nro_transaccion, 
+            t.fecha_transaccion, 
+            t.tipo_transaccion, 
+            t.monto_transaccion,
+            cl.tipo_cliente
+        FROM transaccion t
+        JOIN tarjeta ta ON t.nro_tarjeta = ta.nro_tarjeta
+        JOIN cliente c ON ta.numrun = c.numrun AND ta.dvrun = c.dvrun
+        JOIN tipo_cliente cl ON c.cod_tipo_cliente = cl.cod_tipo_cliente
+        WHERE EXTRACT(YEAR FROM t.fecha_transaccion) = EXTRACT(YEAR FROM SYSDATE) - 1
+        ORDER BY t.fecha_transaccion, c.numrun, t.nro_transaccion;
+
+    -- Cursor con parámetro para resumen por mes
+    CURSOR c_resumen_mes (p_mes NUMBER, p_anno NUMBER) IS
+        SELECT 
+            t.tipo_transaccion,
+            SUM(t.monto_transaccion) AS monto_total,
+            COUNT(*) AS cantidad
+        FROM transaccion t
+        WHERE EXTRACT(MONTH FROM t.fecha_transaccion) = p_mes
+          AND EXTRACT(YEAR FROM t.fecha_transaccion) = p_anno
+        GROUP BY t.tipo_transaccion
+        ORDER BY t.tipo_transaccion;
+
+    -- Variables para procesamiento
+    v_mes_anno VARCHAR2(6);
+    v_monto_total_compras NUMBER := 0;
+    v_total_puntos_compras NUMBER := 0;
+    v_monto_total_avances NUMBER := 0;
+    v_total_puntos_avances NUMBER := 0;
+    v_monto_total_savances NUMBER := 0;
+    v_total_puntos_savances NUMBER := 0;
+    
+    -- Variables para detalles
+    v_puntos_asignados NUMBER;
+    v_monto_anual NUMBER;
+    
+    -- Registro PL/SQL para cliente
+    TYPE r_cliente IS RECORD (
+        numrun cliente.numrun%TYPE,
+        dvrun cliente.dvrun%TYPE,
+        tipo_cliente tipo_cliente.tipo_cliente%TYPE
+    );
+    v_cliente r_cliente;
+
+BEGIN
+    -- 1. Truncar tablas de destino
+    EXECUTE IMMEDIATE 'TRUNCATE TABLE DETALLE_PUNTOS_TARJETA_CATB';
+    EXECUTE IMMEDIATE 'TRUNCATE TABLE RESUMEN_PUNTOS_TARJETA_CATB';
+    
+    -- 2. Procesar transacciones detalladas
+    FOR rec IN c_transacciones LOOP
+        -- Inicializar puntos
+        v_puntos_asignados := 0;
+        
+        -- Calcular puntos normales (por cada $100.000)
+        v_puntos_asignados := TRUNC(rec.monto_transaccion / 100000) * v_puntos(1);
+        
+        -- Verificar si aplican puntos extras (dueñas de casa, pensionados, tercera edad)
+        IF rec.tipo_cliente IN ('Dueña de casa', 'Pensionado', 'Tercera Edad') THEN
+            -- Calcular monto anual acumulado del cliente
+            SELECT NVL(SUM(monto_transaccion), 0)
+            INTO v_monto_anual
+            FROM transaccion t
+            JOIN tarjeta ta ON t.nro_tarjeta = ta.nro_tarjeta
+            WHERE ta.numrun = rec.numrun
+              AND ta.dvrun = rec.dvrun
+              AND EXTRACT(YEAR FROM t.fecha_transaccion) = EXTRACT(YEAR FROM SYSDATE) - 1;
+            
+            -- Aplicar puntos extras según rango
+            IF v_monto_anual BETWEEN 500000 AND 700000 THEN
+                v_puntos_asignados := v_puntos_asignados + (TRUNC(rec.monto_transaccion / 100000) * v_puntos(2));
+            ELSIF v_monto_anual BETWEEN 700001 AND 900000 THEN
+                v_puntos_asignados := v_puntos_asignados + (TRUNC(rec.monto_transaccion / 100000) * v_puntos(3));
+            ELSIF v_monto_anual > 900000 THEN
+                v_puntos_asignados := v_puntos_asignados + (TRUNC(rec.monto_transaccion / 100000) * v_puntos(4));
+            END IF;
+        END IF;
+        
+        -- Insertar en detalle
+        INSERT INTO DETALLE_PUNTOS_TARJETA_CATB (
+            numrun, dvrun, nro_tarjeta, nro_transaccion, 
+            fecha_transaccion, tipo_transaccion, 
+            monto_transaccion, puntos_asignados
+        ) VALUES (
+            rec.numrun, rec.dvrun, rec.nro_tarjeta, rec.nro_transaccion,
+            rec.fecha_transaccion, rec.tipo_transaccion,
+            rec.monto_transaccion, v_puntos_asignados
+        );
+        
+        -- Acumular para resumen por mes
+        v_mes_anno := TO_CHAR(rec.fecha_transaccion, 'MMYYYY');
+        
+        IF rec.tipo_transaccion = 'Compras Tiendas Retail o Asociadas' THEN
+            v_monto_total_compras := v_monto_total_compras + rec.monto_transaccion;
+            v_total_puntos_compras := v_total_puntos_compras + v_puntos_asignados;
+        ELSIF rec.tipo_transaccion = 'Avance en Efectivo' THEN
+            v_monto_total_avances := v_monto_total_avances + rec.monto_transaccion;
+            v_total_puntos_avances := v_total_puntos_avances + v_puntos_asignados;
+        ELSIF rec.tipo_transaccion = 'Super Avance en Efectivo' THEN
+            v_monto_total_savances := v_monto_total_savances + rec.monto_transaccion;
+            v_total_puntos_savances := v_total_puntos_savances + v_puntos_asignados;
+        END IF;
+    END LOOP;
+    
+    -- 3. Generar resumen mensual
+    FOR mes IN 1..12 LOOP
+        -- Reiniciar acumuladores por mes
+        v_monto_total_compras := 0;
+        v_total_puntos_compras := 0;
+        v_monto_total_avances := 0;
+        v_total_puntos_avances := 0;
+        v_monto_total_savances := 0;
+        v_total_puntos_savances := 0;
+        
+        -- Calcular totales por mes
+        SELECT 
+            NVL(SUM(CASE WHEN tipo_transaccion = 'Compras Tiendas Retail o Asociadas' THEN monto_transaccion ELSE 0 END), 0),
+            NVL(SUM(CASE WHEN tipo_transaccion = 'Compras Tiendas Retail o Asociadas' THEN puntos_asignados ELSE 0 END), 0),
+            NVL(SUM(CASE WHEN tipo_transaccion = 'Avance en Efectivo' THEN monto_transaccion ELSE 0 END), 0),
+            NVL(SUM(CASE WHEN tipo_transaccion = 'Avance en Efectivo' THEN puntos_asignados ELSE 0 END), 0),
+            NVL(SUM(CASE WHEN tipo_transaccion = 'Super Avance en Efectivo' THEN monto_transaccion ELSE 0 END), 0),
+            NVL(SUM(CASE WHEN tipo_transaccion = 'Super Avance en Efectivo' THEN puntos_asignados ELSE 0 END), 0)
+        INTO 
+            v_monto_total_compras,
+            v_total_puntos_compras,
+            v_monto_total_avances,
+            v_total_puntos_avances,
+            v_monto_total_savances,
+            v_total_puntos_savances
+        FROM DETALLE_PUNTOS_TARJETA_CATB
+        WHERE EXTRACT(MONTH FROM fecha_transaccion) = mes
+          AND EXTRACT(YEAR FROM fecha_transaccion) = EXTRACT(YEAR FROM SYSDATE) - 1;
+        
+        -- Insertar resumen si hay datos
+        IF v_monto_total_compras > 0 OR v_monto_total_avances > 0 OR v_monto_total_savances > 0 THEN
+            INSERT INTO RESUMEN_PUNTOS_TARJETA_CATB (
+                mes_anno, 
+                monto_total_compras, total_puntos_compras,
+                monto_total_avances, total_puntos_avances,
+                monto_total_savances, total_puntos_savances
+            ) VALUES (
+                LPAD(mes, 2, '0') || TO_CHAR(EXTRACT(YEAR FROM SYSDATE) - 1),
+                v_monto_total_compras, v_total_puntos_compras,
+                v_monto_total_avances, v_total_puntos_avances,
+                v_monto_total_savances, v_total_puntos_savances
+            );
+        END IF;
+    END LOOP;
+    
+    COMMIT;
+    DBMS_OUTPUT.PUT_LINE('Proceso Caso 1 completado exitosamente.');
+    
+EXCEPTION
+    WHEN OTHERS THEN
+        ROLLBACK;
+        DBMS_OUTPUT.PUT_LINE('Error en Caso 1: ' || SQLERRM);
+END;
+/
+
+-- CASO 2: Generación de aportes SBIF
+DECLARE
+    -- Cursores explícitos
+    CURSOR c_detalle_avances IS
+        SELECT 
+            c.numrun, 
+            c.dvrun, 
+            t.nro_tarjeta,
+            t.nro_transaccion,
+            t.fecha_transaccion,
+            t.tipo_transaccion,
+            t.monto_transaccion,
+            -- Calcular monto total con interés (ejemplo: 15% para avances, 20% para súper avances)
+            CASE 
+                WHEN t.tipo_transaccion = 'Avance en Efectivo' THEN t.monto_transaccion * 1.15
+                WHEN t.tipo_transaccion = 'Super Avance en Efectivo' THEN t.monto_transaccion * 1.20
+                ELSE t.monto_transaccion
+            END AS monto_total_con_interes
+        FROM transaccion t
+        JOIN tarjeta ta ON t.nro_tarjeta = ta.nro_tarjeta
+        JOIN cliente c ON ta.numrun = c.numrun AND ta.dvrun = c.dvrun
+        WHERE t.tipo_transaccion IN ('Avance en Efectivo', 'Super Avance en Efectivo')
+          AND EXTRACT(YEAR FROM t.fecha_transaccion) = EXTRACT(YEAR FROM SYSDATE)
+        ORDER BY t.fecha_transaccion, c.numrun;
+    
+    -- Cursor con parámetro para resumen
+    CURSOR c_resumen_mes (p_mes NUMBER, p_anno NUMBER, p_tipo_transaccion VARCHAR2) IS
+        SELECT 
+            COUNT(*) as cantidad,
+            SUM(
+                CASE 
+                    WHEN t.tipo_transaccion = 'Avance en Efectivo' THEN t.monto_transaccion * 1.15
+                    WHEN t.tipo_transaccion = 'Super Avance en Efectivo' THEN t.monto_transaccion * 1.20
+                    ELSE t.monto_transaccion
+                END
+            ) as monto_total,
+            SUM(
+                CASE 
+                    WHEN t.tipo_transaccion = 'Avance en Efectivo' THEN t.monto_transaccion * 1.15 * 0.04  -- 4% aporte
+                    WHEN t.tipo_transaccion = 'Super Avance en Efectivo' THEN t.monto_transaccion * 1.20 * 0.05  -- 5% aporte
+                    ELSE 0
+                END
+            ) as aporte_total
+        FROM transaccion t
+        WHERE t.tipo_transaccion = p_tipo_transaccion
+          AND EXTRACT(MONTH FROM t.fecha_transaccion) = p_mes
+          AND EXTRACT(YEAR FROM t.fecha_transaccion) = p_anno;
+    
+    -- Variables
+    v_aporte_sbif NUMBER;
+    v_mes_anno VARCHAR2(6);
+    
+BEGIN
+    -- 1. Truncar tablas de destino
+    EXECUTE IMMEDIATE 'TRUNCATE TABLE DETALLE_APORTE_SBIF';
+    EXECUTE IMMEDIATE 'TRUNCATE TABLE RESUMEN_APORTE_SBIF';
+    
+    -- 2. Procesar detalles de avances
+    FOR rec IN c_detalle_avances LOOP
+        -- Calcular aporte SBIF según tipo de transacción
+        IF rec.tipo_transaccion = 'Avance en Efectivo' THEN
+            v_aporte_sbif := rec.monto_total_con_interes * 0.04; -- 4% para avances
+        ELSIF rec.tipo_transaccion = 'Super Avance en Efectivo' THEN
+            v_aporte_sbif := rec.monto_total_con_interes * 0.05; -- 5% para súper avances
+        ELSE
+            v_aporte_sbif := 0;
+        END IF;
+        
+        -- Insertar en detalle
+        INSERT INTO DETALLE_APORTE_SBIF (
+            numrun, dvrun, nro_tarjeta, nro_transaccion,
+            fecha_transaccion, tipo_transaccion,
+            monto_total_transaccion, aporte_sbif
+        ) VALUES (
+            rec.numrun, rec.dvrun, rec.nro_tarjeta, rec.nro_transaccion,
+            rec.fecha_transaccion, rec.tipo_transaccion,
+            rec.monto_total_con_interes, v_aporte_sbif
+        );
+    END LOOP;
+    
+    -- 3. Generar resumen mensual por tipo de transacción
+    FOR mes IN 1..12 LOOP
+        FOR tipo IN ('Avance en Efectivo', 'Super Avance en Efectivo') LOOP
+            DECLARE
+                v_cantidad NUMBER;
+                v_monto_total NUMBER;
+                v_aporte_total NUMBER;
+            BEGIN
+                OPEN c_resumen_mes(mes, EXTRACT(YEAR FROM SYSDATE), tipo);
+                FETCH c_resumen_mes INTO v_cantidad, v_monto_total, v_aporte_total;
+                
+                IF v_cantidad > 0 THEN
+                    -- Insertar resumen
+                    INSERT INTO RESUMEN_APORTE_SBIF (
+                        mes_anno, tipo_transaccion,
+                        monto_total_transacciones, aporte_total_sbif
+                    ) VALUES (
+                        LPAD(mes, 2, '0') || EXTRACT(YEAR FROM SYSDATE),
+                        tipo,
+                        v_monto_total,
+                        v_aporte_total
+                    );
+                END IF;
+                
+                CLOSE c_resumen_mes;
+            END;
+        END LOOP;
+    END LOOP;
+    
+    COMMIT;
+    DBMS_OUTPUT.PUT_LINE('Proceso Caso 2 completado exitosamente.');
+    
+EXCEPTION
+    WHEN OTHERS THEN
+        ROLLBACK;
+        DBMS_OUTPUT.PUT_LINE('Error en Caso 2: ' || SQLERRM);
+END;
+/
