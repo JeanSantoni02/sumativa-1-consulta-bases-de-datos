@@ -1,0 +1,200 @@
+DECLARE
+    -- VARIABLE BIND para el período de ejecución
+    v_anio_ejecucion NUMBER := &anio_ejecucion;
+    
+    -- VARRAY para tipos de transacción
+    TYPE t_tipos_transaccion IS VARRAY(2) OF VARCHAR2(50);
+    v_tipos_transaccion t_tipos_transaccion := t_tipos_transaccion('Avance en Efectivo', 'Súper Avance en Efectivo');
+    
+    -- Registro PL/SQL para detalles
+    TYPE r_detalle IS RECORD (
+        fecha_transaccion DATE,
+        run_cliente VARCHAR2(20),
+        tipo_transaccion VARCHAR2(50),
+        monto_transaccion NUMBER,
+        monto_total_transaccion NUMBER,
+        aporte_sbif NUMBER
+    );
+    
+    v_detalle r_detalle;
+    
+    -- Variables para cursores
+    CURSOR c_detalle (p_anio NUMBER) IS
+        SELECT fecha_transaccion, run_cliente, tipo_transaccion, monto_transaccion
+        FROM transacciones_tarjeta
+        WHERE EXTRACT(YEAR FROM fecha_transaccion) = p_anio
+          AND tipo_transaccion IN ('Avance en Efectivo', 'Súper Avance en Efectivo')
+        ORDER BY fecha_transaccion, run_cliente;
+    
+    CURSOR c_resumen (p_anio NUMBER) IS
+        SELECT 
+            TO_CHAR(fecha_transaccion, 'MMYYYY') as mes_anno,
+            tipo_transaccion,
+            SUM(monto_total_transaccion) as monto_total,
+            SUM(aporte_sbif) as aporte_total
+        FROM detalle_aporte_sbif
+        WHERE EXTRACT(YEAR FROM fecha_transaccion) = p_anio
+        GROUP BY TO_CHAR(fecha_transaccion, 'MMYYYY'), tipo_transaccion
+        ORDER BY mes_anno, tipo_transaccion;
+    
+    -- Variables para cálculo
+    v_monto_total_transaccion NUMBER;
+    v_aporte_sbif NUMBER;
+    v_tasa_interes NUMBER;
+    
+    -- Variables para control
+    v_contador_iteraciones NUMBER := 0;
+    v_total_registros NUMBER := 0;
+    
+    -- Excepciones definidas
+    e_sin_transacciones EXCEPTION;
+    PRAGMA EXCEPTION_INIT(e_sin_transacciones, -20001);
+    e_monto_invalido EXCEPTION;
+    PRAGMA EXCEPTION_INIT(e_monto_invalido, -20002);
+    e_anio_invalido EXCEPTION;
+    PRAGMA EXCEPTION_INIT(e_anio_invalido, -20003);
+
+BEGIN
+    -- Validación del año de ejecución (excepción definida por usuario)
+    IF v_anio_ejecucion < 2020 OR v_anio_ejecucion > EXTRACT(YEAR FROM SYSDATE) THEN
+        RAISE e_anio_invalido;
+    END IF;
+    
+    -- Truncar tablas destino
+    EXECUTE IMMEDIATE 'TRUNCATE TABLE DETALLE_APORTE_SBIF';
+    EXECUTE IMMEDIATE 'TRUNCATE TABLE RESUMEN_APORTE_SBIF';
+    
+    DBMS_OUTPUT.PUT_LINE('Procesando año: ' || v_anio_ejecucion);
+    DBMS_OUTPUT.PUT_LINE('Tipos de transacción a procesar: ' || v_tipos_transaccion.COUNT);
+    
+    -- Contar total de registros a procesar
+    SELECT COUNT(*)
+    INTO v_total_registros
+    FROM transacciones_tarjeta
+    WHERE EXTRACT(YEAR FROM fecha_transaccion) = v_anio_ejecucion
+      AND tipo_transaccion IN ('Avance en Efectivo', 'Súper Avance en Efectivo');
+    
+    -- Validar si hay transacciones (excepción no predefinida)
+    IF v_total_registros = 0 THEN
+        RAISE e_sin_transacciones;
+    END IF;
+    
+    DBMS_OUTPUT.PUT_LINE('Total de registros a procesar: ' || v_total_registros);
+    
+    -- Procesar detalles
+    FOR rec IN c_detalle(v_anio_ejecucion) LOOP
+        v_contador_iteraciones := v_contador_iteraciones + 1;
+        
+        BEGIN
+            -- Calcular monto total con tasa de interés
+            -- Tasa de interés según tipo de transacción (ejemplo)
+            IF rec.tipo_transaccion = 'Avance en Efectivo' THEN
+                v_tasa_interes := 1.05; -- 5% interés
+            ELSE
+                v_tasa_interes := 1.08; -- 8% interés
+            END IF;
+            
+            v_monto_total_transaccion := rec.monto_transaccion * v_tasa_interes;
+            
+            -- Validar monto (excepción predefinida)
+            IF v_monto_total_transaccion <= 0 THEN
+                RAISE e_monto_invalido;
+            END IF;
+            
+            -- Calcular aporte SBIF según tramos
+            IF v_monto_total_transaccion <= 1000000 THEN
+                v_aporte_sbif := v_monto_total_transaccion * 0.01; -- 1%
+            ELSIF v_monto_total_transaccion <= 5000000 THEN
+                v_aporte_sbif := v_monto_total_transaccion * 0.02; -- 2%
+            ELSE
+                v_aporte_sbif := v_monto_total_transaccion * 0.03; -- 3%
+            END IF;
+            
+            -- Insertar en tabla detalle
+            INSERT INTO DETALLE_APORTE_SBIF (
+                fecha_transaccion,
+                run_cliente,
+                tipo_transaccion,
+                monto_transaccion,
+                monto_total_transaccion,
+                aporte_sbif
+            ) VALUES (
+                rec.fecha_transaccion,
+                rec.run_cliente,
+                rec.tipo_transaccion,
+                rec.monto_transaccion,
+                v_monto_total_transaccion,
+                v_aporte_sbif
+            );
+            
+            -- Commit cada 100 registros
+            IF MOD(v_contador_iteraciones, 100) = 0 THEN
+                COMMIT;
+            END IF;
+            
+        EXCEPTION
+            WHEN e_monto_invalido THEN
+                DBMS_OUTPUT.PUT_LINE('Error: Monto inválido en registro ' || v_contador_iteraciones);
+                v_aporte_sbif := 0;
+                
+            WHEN VALUE_ERROR THEN -- Excepción predefinida
+                DBMS_OUTPUT.PUT_LINE('Error de valor en registro ' || v_contador_iteraciones);
+                v_aporte_sbif := 0;
+                
+            WHEN OTHERS THEN
+                DBMS_OUTPUT.PUT_LINE('Error inesperado: ' || SQLERRM);
+                RAISE;
+        END;
+        
+    END LOOP;
+    
+    -- Procesar resumen
+    FOR rec_resumen IN c_resumen(v_anio_ejecucion) LOOP
+        INSERT INTO RESUMEN_APORTE_SBIF (
+            mes_anno,
+            tipo_transaccion,
+            monto_total_transacciones,
+            aporte_total_abif
+        ) VALUES (
+            rec_resumen.mes_anno,
+            rec_resumen.tipo_transaccion,
+            rec_resumen.monto_total,
+            rec_resumen.aporte_total
+        );
+    END LOOP;
+    
+    -- Confirmar transacción si todas las iteraciones se completaron
+    IF v_contador_iteraciones = v_total_registros THEN
+        COMMIT;
+        DBMS_OUTPUT.PUT_LINE('Proceso completado exitosamente.');
+        DBMS_OUTPUT.PUT_LINE('Registros procesados: ' || v_contador_iteraciones);
+        DBMS_OUTPUT.PUT_LINE('Resúmenes generados: ' || c_resumen%ROWCOUNT);
+    ELSE
+        ROLLBACK;
+        DBMS_OUTPUT.PUT_LINE('Error: No se procesaron todos los registros.');
+        DBMS_OUTPUT.PUT_LINE('Esperados: ' || v_total_registros || ', Procesados: ' || v_contador_iteraciones);
+    END IF;
+    
+EXCEPTION
+    WHEN e_sin_transacciones THEN
+        DBMS_OUTPUT.PUT_LINE('Error: No hay transacciones para el año ' || v_anio_ejecucion);
+        ROLLBACK;
+        
+    WHEN e_anio_invalido THEN
+        DBMS_OUTPUT.PUT_LINE('Error: Año de ejecución inválido. Debe estar entre 2020 y ' || EXTRACT(YEAR FROM SYSDATE));
+        ROLLBACK;
+        
+    WHEN NO_DATA_FOUND THEN
+        DBMS_OUTPUT.PUT_LINE('Error: No se encontraron datos.');
+        ROLLBACK;
+        
+    WHEN TOO_MANY_ROWS THEN
+        DBMS_OUTPUT.PUT_LINE('Error: Demasiados registros encontrados.');
+        ROLLBACK;
+        
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Error inesperado: ' || SQLCODE || ' - ' || SQLERRM);
+        ROLLBACK;
+        
+END;
+/
